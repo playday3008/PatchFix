@@ -241,6 +241,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           draft: true
           prerelease: ${{ inputs.prerelease }}
+          # The release-index workflow owns "Latest"; see release-index.yml.
+          make_latest: false
           body_path: notes.md
           files: |
             *.asi

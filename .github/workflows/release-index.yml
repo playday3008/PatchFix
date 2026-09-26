@@ -1,0 +1,82 @@
+name: Release Index
+
+# Keeps one permanent "latest" release as the repository's Latest, listing the
+# newest release of every game. Per-game releases are not ordered across games,
+# so none of them can stand for the whole repository.
+
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  INDEX_TAG: latest
+
+concurrency:
+  group: release-index
+  cancel-in-progress: false
+
+jobs:
+  index:
+    name: Update release index
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # A release event checks out the release's tag; the game list must come
+      # from the default branch so games added since then are listed too.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Build index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASES=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease \
+                     --jq '.[] | select(.isDraft | not) | select(.isPrerelease | not) | .tagName')
+
+          {
+            echo "Releases are published per game. Pick the latest release for your game:"
+            echo
+            echo "| Game | Latest release |"
+            echo "|------|----------------|"
+            for cmake_file in games/*/*/CMakeLists.txt; do
+              GAME=${cmake_file#games/}
+              GAME=${GAME%/CMakeLists.txt}
+              PREFIX="${GAME//\//-}/v"
+              NAME=$(grep -m1 -oP '^project\(\K[^\s)]+' "$cmake_file")
+              TAG=$(echo "$RELEASES" | grep -P "^\Q$PREFIX\E[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
+              if [ -n "$TAG" ]; then
+                LINK="[$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)"
+              else
+                LINK="not released yet"
+              fi
+              echo "| [$NAME.PatchFix](games/$GAME/README.md) | $LINK |"
+            done
+            echo
+            echo "Releases up to \`v3.3.0\` bundled every game under one tag."
+          } > index.md
+          # Relative links in a release body do not resolve against the repository.
+          sed -i "s#](games/#]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/HEAD/games/#" index.md
+          cat index.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Re-marking as Latest also undoes a game release published with the
+          # "Set as the latest release" box left ticked.
+          if gh release view "$INDEX_TAG" >/dev/null 2>&1; then
+            gh release edit "$INDEX_TAG" --notes-file index.md --latest
+          else
+            gh release create "$INDEX_TAG" --target "$(git rev-parse HEAD)" --title "PatchFix releases" \
+              --notes-file index.md --latest
+          fi
