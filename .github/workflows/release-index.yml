@@ -77,6 +77,6 @@ jobs:
           if gh release view "$INDEX_TAG" >/dev/null 2>&1; then
             gh release edit "$INDEX_TAG" --notes-file index.md --latest
           else
-            gh release create "$INDEX_TAG" --target "$(git rev-parse HEAD)" --title "PatchFix releases" \
+            gh release create "$INDEX_TAG" --target "$(git rev-parse HEAD)" --title "PatchFix Releases" \
               --notes-file index.md --latest
           fi
