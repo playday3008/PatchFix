@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <Windows.h>
@@ -51,6 +52,13 @@ TEST_CASE("list_folders returns sorted subfolders only", "[batman-ak][custom_con
 
 TEST_CASE("list_folders on a missing root is empty", "[batman-ak][custom_content]") {
     CHECK(list_folders(fs::temp_directory_path() / L"patchfix_no_such_dir").empty());
+}
+
+TEST_CASE("list_folders on a missing root reports an error", "[batman-ak][custom_content]") {
+    std::error_code ec;
+    const auto      folders = list_folders(fs::temp_directory_path() / L"patchfix_no_such_dir", ec);
+    CHECK(folders.empty());
+    CHECK(ec);
 }
 
 TEST_CASE("build_bundle splits packages from files", "[batman-ak][custom_content]") {

@@ -4,6 +4,7 @@
 #include <exception>
 #include <filesystem>
 #include <string>
+#include <system_error>
 
 #include <Windows.h>
 
@@ -55,11 +56,24 @@ namespace games::batman::ak {
                                   utf8(mgr->InstalledDLC.at(i).ToWideString()));
             }
 
-            for (const auto &folder : custom_content::list_folders(root)) {
+            std::error_code list_ec;
+            const auto      folders = custom_content::list_folders(root, list_ec);
+            if (list_ec) {
+                log::get()->warn("DLCLoader: could not list {}: {}",
+                                 utf8(root.wstring()),
+                                 list_ec.message());
+            }
+
+            for (const auto &folder : folders) {
                 const auto name = folder.filename().wstring();
                 const auto bundle =
                     custom_content::build_bundle(folder,
                                                  custom_content::game_prefix(configured, name));
+                if (bundle.error) {
+                    log::get()->warn("DLCLoader: {} scan hit an error: {}",
+                                     utf8(name),
+                                     bundle.error.message());
+                }
                 if (bundle.packages.empty() && bundle.files.empty()) {
                     log::get()->info("DLCLoader: {} skipped, no files", utf8(name));
                     continue;

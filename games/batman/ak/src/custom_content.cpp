@@ -39,9 +39,9 @@ namespace games::batman::ak::custom_content {
         return out;
     }
 
-    auto list_folders(const fs::path &root) -> std::vector<fs::path> {
+    auto list_folders(const fs::path &root, std::error_code &ec) -> std::vector<fs::path> {
+        ec = {};
         std::vector<fs::path> out;
-        std::error_code       ec;
         for (fs::directory_iterator it(root, ec), end; !ec && it != end; it.increment(ec)) {
             std::error_code status_ec;
             if (it->is_directory(status_ec) && !status_ec) {
@@ -54,10 +54,18 @@ namespace games::batman::ak::custom_content {
         return out;
     }
 
+    auto list_folders(const fs::path &root) -> std::vector<fs::path> {
+        std::error_code ec;
+        return list_folders(root, ec);
+    }
+
     auto build_bundle(const fs::path &folder, std::wstring_view prefix) -> Bundle {
         std::vector<std::wstring> rels;
         std::error_code           ec;
-        for (fs::recursive_directory_iterator it(folder, ec), end; !ec && it != end;
+        for (fs::recursive_directory_iterator
+                 it(folder, fs::directory_options::skip_permission_denied, ec),
+             end;
+             !ec && it != end;
              it.increment(ec)) {
             std::error_code status_ec;
             if (it->is_regular_file(status_ec) && !status_ec) {
@@ -66,7 +74,10 @@ namespace games::batman::ak::custom_content {
         }
         std::ranges::sort(rels, iless);
 
-        Bundle bundle {.name = folder.filename().wstring(), .packages = {}, .files = {}};
+        Bundle bundle {.name     = folder.filename().wstring(),
+                       .packages = {},
+                       .files    = {},
+                       .error    = ec};
         for (const auto &rel : rels) {
             std::wstring game_path = std::wstring(prefix) + L'\\' + rel;
             const auto   ext       = fs::path(rel).extension().wstring();
