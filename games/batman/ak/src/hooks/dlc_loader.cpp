@@ -91,18 +91,37 @@ namespace games::batman::ak {
                 return;
             }
 
-            if (s_trigger_name < 0) {
-                s_trigger_name  = FName("RefreshDLCEnumComplete").GetDisplayIndex();
-                s_manager_class = UDownloadableContentManager::StaticClass();
-                if (s_trigger_name < 0 || s_manager_class == nullptr) {
-                    log::get()->error("DLCLoader: trigger function or manager class not found");
-                    s_disabled = true;
+            try {
+                if (s_trigger_name < 0) {
+                    s_trigger_name = FName("RefreshDLCEnumComplete").GetDisplayIndex();
+                    if (s_trigger_name < 0) {
+                        log::get()->error("DLCLoader: trigger function not found");
+                        s_disabled = true;
+                        return;
+                    }
+                }
+
+                if (fn->Name.GetDisplayIndex() != s_trigger_name || self == nullptr) {
                     return;
                 }
-            }
 
-            if (fn->Name.GetDisplayIndex() != s_trigger_name || self == nullptr ||
-                !self->IsA(s_manager_class)) {
+                // Resolved lazily: only walks GObjects once the trigger name has
+                // actually matched, instead of on every plugin's first ProcessEvent.
+                if (s_manager_class == nullptr) {
+                    s_manager_class = UDownloadableContentManager::StaticClass();
+                    if (s_manager_class == nullptr) {
+                        log::get()->error("DLCLoader: manager class not found");
+                        s_disabled = true;
+                        return;
+                    }
+                }
+
+                if (!self->IsA(s_manager_class)) {
+                    return;
+                }
+            } catch (const std::exception &e) {
+                log::get()->error("DLCLoader: lookup failed: {}", e.what());
+                s_disabled = true;
                 return;
             }
 
