@@ -1,19 +1,30 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include <array>
 #include <optional>
 #include <string_view>
+#include <tuple>
 
 #include "core/hooks/registry/config_base.hpp"
 #include "core/hooks/registry/dep_list.hpp"
 #include "core/hooks/registry/hook_traits.hpp"
+#include "core/hooks/registry/ini_field.hpp"
 
 #include "games/batman/ak/game_data.hpp"
+#include "games/batman/ak/subscribers.hpp"
 
 namespace games::batman::ak {
     struct ProcessEventHook {};
+
+    // Adds a handler to the ProcessEvent hook. Call from a hook's install that
+    // lists ProcessEventHook in its hard_deps, as the last step, after
+    // everything else in install that can fail: there is no unsubscribe.
+    // A runtime [Hooks] toggle does not remove the handler either, so it
+    // must check registry().enabled<Tag>() for its own hook tag itself.
+    auto subscribe(Handler handler) -> void;
 } // namespace games::batman::ak
 
 namespace hooks {
@@ -35,7 +46,12 @@ namespace hooks {
         };
         static constexpr auto optional_patterns = std::array<PatternField, 0> {};
 
-        using Config = empty_config;
+        struct Config : config_base<Config> {
+            ini_field<bool> log_process_event {"Debug", "LogProcessEvent", false};
+
+            static constexpr std::size_t field_count = 1;
+            static constexpr auto        field_ptrs  = std::tuple {&Config::log_process_event};
+        };
 
         static auto install(const Addrs &addrs) -> bool;
     };
