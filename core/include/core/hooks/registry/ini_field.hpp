@@ -30,9 +30,10 @@ namespace hooks {
         // Deleting a key means "go back to the default". Leaving the previous value
         // in place instead made the removal a silent no-op until the next launch.
         void load_from(mINI::INIStructure &ini) {
-            std::string s(section);
-            std::string k(key);
-            const T     val = (ini.has(s) && ini[s].has(k)) ? Parser {}(ini[s][k]) : default_value;
+            const std::string s(section);
+            const std::string k(key);
+            const auto        sec = ini.get(s);
+            const T           val = sec.has(k) ? Parser {}(sec.get(k)) : default_value;
             value.store(val, std::memory_order_relaxed);
         }
     };

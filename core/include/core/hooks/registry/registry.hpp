@@ -40,7 +40,7 @@ namespace hooks {
         // scan entries are what map a pattern member pointer back to the
         // signature name, which is the only thing worth printing to a user.
         template<typename Data>
-        void install_all(const typename Data::ResolvedAddresses &addrs, mINI::INIStructure &ini);
+        void install_all(const Data::ResolvedAddresses &addrs, mINI::INIStructure &ini);
 
         void reload(mINI::INIStructure &ini);
 

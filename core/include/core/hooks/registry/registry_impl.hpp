@@ -20,7 +20,8 @@
 #include "core/hooks/registry/dep_list.hpp"
 #include "core/hooks/registry/hook_traits.hpp"
 #include "core/hooks/registry/parsers.hpp"
-#include "core/hooks/registry/registry.hpp"
+// registry.hpp includes this file at its end; the cycle is intentional.
+#include "core/hooks/registry/registry.hpp" // NOLINT(misc-header-include-cycle)
 #include "core/hooks/registry/validate.hpp"
 
 namespace hooks {
@@ -180,9 +181,10 @@ namespace hooks {
                     // deleted key restores that rather than freezing the value the
                     // key had before it was removed.
                     .load_enabled = [](Registry<HookList> &r, mINI::INIStructure &ini) -> void {
-                        std::string key(HookTraits<Tag>::name);
-                        if (ini.has("Hooks") && ini["Hooks"].has(key)) {
-                            r.template set_enabled<Tag>(default_parser<bool> {}(ini["Hooks"][key]));
+                        const std::string key(HookTraits<Tag>::name);
+                        const auto        hooks = ini.get("Hooks");
+                        if (hooks.has(key)) {
+                            r.template set_enabled<Tag>(default_parser<bool> {}(hooks.get(key)));
                             return;
                         }
                         r.template set_enabled<Tag>(true);
@@ -192,7 +194,7 @@ namespace hooks {
                         if constexpr (!std::is_void_v<Data>) {
                             return +[](const void *raw) -> bool {
                                 const auto &addrs =
-                                    *static_cast<const typename Data::ResolvedAddresses *>(raw);
+                                    *static_cast<const Data::ResolvedAddresses *>(raw);
                                 return std::ranges::all_of(HookTraits<Tag>::required_patterns,
                                                            [&](auto f) -> bool {
                                                                return (addrs.*f).has_value();
@@ -211,7 +213,7 @@ namespace hooks {
                         if constexpr (!std::is_void_v<Data>) {
                             return +[](const void *raw, std::string_view hook_name) -> void {
                                 const auto &addrs =
-                                    *static_cast<const typename Data::ResolvedAddresses *>(raw);
+                                    *static_cast<const Data::ResolvedAddresses *>(raw);
                                 for (auto f : HookTraits<Tag>::optional_patterns) {
                                     if (!(addrs.*f).has_value()) {
                                         log::get()->warn(
@@ -231,7 +233,7 @@ namespace hooks {
                         if constexpr (!std::is_void_v<Data>) {
                             return +[](const void *raw) -> bool {
                                 const auto &addrs =
-                                    *static_cast<const typename Data::ResolvedAddresses *>(raw);
+                                    *static_cast<const Data::ResolvedAddresses *>(raw);
                                 return HookTraits<Tag>::install(addrs);
                             };
                         } else {
@@ -322,8 +324,8 @@ namespace hooks {
 
     template<typename HookList>
     template<typename Data>
-    void Registry<HookList>::install_all(const typename Data::ResolvedAddresses &addrs,
-                                         mINI::INIStructure                     &ini) {
+    void Registry<HookList>::install_all(const Data::ResolvedAddresses &addrs,
+                                         mINI::INIStructure            &ini) {
         using Ops = detail::RegistryOps<HookList>;
 
         static const auto ops = Ops::template make_all_ops<Data>(HookList {});

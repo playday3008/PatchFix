@@ -55,6 +55,8 @@ namespace games::ac::syndicate {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
     struct DeviceManager {
+        // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        // The manager is only partly mapped, so its fields are read by offset.
         [[nodiscard]] auto active_device_index() const -> std::uint32_t {
             return *reinterpret_cast<const std::uint32_t *>(reinterpret_cast<const char *>(this) +
                                                             0x798);
@@ -68,6 +70,7 @@ namespace games::ac::syndicate {
         [[nodiscard]] auto active_slot() const -> const DeviceSlot & {
             return slot_array()[active_device_index()];
         }
+        // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     };
 #pragma clang diagnostic pop
 

@@ -109,16 +109,22 @@ void init_game(Registry                    &registry,
         vmp::uninstall();
     }
 
-    watcher() = std::make_unique<FileWatcher>(ini_path, [ini_path, &registry] -> auto {
-        log::get()->info("INI change detected, reloading...");
-        const mINI::INIFile f(ini_path.string());
-        mINI::INIStructure  data;
-        if (f.read(data)) {
-            registry.reload(data);
-        } else {
-            log::get()->warn("Config reload failed: could not read INI");
-        }
-    });
+    // Runs on the watcher thread, where an escaping exception would terminate the game.
+    watcher() =
+        std::make_unique<FileWatcher>(ini_path, [ini = ini_path.string(), &registry] -> auto {
+            try {
+                log::get()->info("INI change detected, reloading...");
+                const mINI::INIFile f(ini);
+                mINI::INIStructure  data;
+                if (f.read(data)) {
+                    registry.reload(data);
+                } else {
+                    log::get()->warn("Config reload failed: could not read INI");
+                }
+            } catch (const std::exception &e) {
+                log::get()->error("Config reload failed: {}", e.what());
+            }
+        });
     log::get()->info("File watcher started for {}", ini_path.string());
 }
 

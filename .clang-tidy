@@ -13,8 +13,9 @@ ImplementationFileExtensions:
   - cpp
   - cxx
 
-HeaderFilterRegex: '.*/include/.*|.*/src/.*|.*/tests/(?!compile_fail).*'
-ExcludeHeaderFilterRegex: ''
+# LLVM regexes have no lookahead, so exclusions go in ExcludeHeaderFilterRegex.
+HeaderFilterRegex: '.*/(include|src|tests)/.*'
+ExcludeHeaderFilterRegex: '.*/tests/compile_fail/.*'
 
 Checks: >
   -*,
