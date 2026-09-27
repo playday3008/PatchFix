@@ -1,11 +1,5 @@
 #include "games/batman/ak/hooks/process_event.hpp"
 
-#include <cstddef>
-
-#include <algorithm>
-#include <array>
-#include <mutex>
-#include <span>
 #include <string_view>
 #include <utility>
 
@@ -13,7 +7,6 @@
 
 #include "core/mem/hook.hpp"
 
-#include "games/batman/ak/registry.hpp"
 #include "games/batman/ak/sdk.hpp"
 
 #include "GameDefines.hpp"
@@ -22,8 +15,6 @@
 
 namespace games::batman::ak {
     namespace {
-        using Tag = ProcessEventHook;
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
@@ -40,31 +31,6 @@ namespace games::batman::ak {
                                        reinterpret_cast<void *>(regs.r8));
             }
         };
-
-        // Debug aid: logs the first 64 distinct functions seen while
-        // [Debug] LogProcessEvent is on.
-        void log_first_functions([[maybe_unused]] UObject *self,
-                                 UFunction                *fn,
-                                 [[maybe_unused]] void    *params) {
-            if (fn == nullptr || !registry().config<Tag>().log_process_event.get()) {
-                return;
-            }
-
-            constexpr std::size_t k_max = 64;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-            static std::mutex                     mutex;
-            static std::array<UFunction *, k_max> seen {};
-            static std::size_t                    count = 0;
-#pragma clang diagnostic pop
-
-            const std::scoped_lock lock(mutex);
-            if (count == k_max || std::ranges::contains(std::span(seen.data(), count), fn)) {
-                return;
-            }
-            seen.at(count++) = fn;
-            log::get()->info("ProcessEvent: {}", fn->GetFullName());
-        }
     } // namespace
 
     auto subscribe(Handler handler) -> void {
@@ -83,8 +49,6 @@ namespace hooks {
             log::get()->error("Arkham Knight ProcessEventHook: SDK globals did not resolve");
             return false;
         }
-
-        subscribe(&log_first_functions);
 
         // required_patterns guarantees this is set before install() runs.
         const auto process_event = addrs.process_event.value();
