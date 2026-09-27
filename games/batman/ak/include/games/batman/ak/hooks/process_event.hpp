@@ -1,17 +1,14 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 
 #include <array>
 #include <optional>
 #include <string_view>
-#include <tuple>
 
 #include "core/hooks/registry/config_base.hpp"
 #include "core/hooks/registry/dep_list.hpp"
 #include "core/hooks/registry/hook_traits.hpp"
-#include "core/hooks/registry/ini_field.hpp"
 
 #include "games/batman/ak/game_data.hpp"
 #include "games/batman/ak/subscribers.hpp"
@@ -46,12 +43,7 @@ namespace hooks {
         };
         static constexpr auto optional_patterns = std::array<PatternField, 0> {};
 
-        struct Config : config_base<Config> {
-            ini_field<bool> log_process_event {"Debug", "LogProcessEvent", false};
-
-            static constexpr std::size_t field_count = 1;
-            static constexpr auto        field_ptrs  = std::tuple {&Config::log_process_event};
-        };
+        using Config = empty_config;
 
         static auto install(const Addrs &addrs) -> bool;
     };
