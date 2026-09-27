@@ -122,3 +122,11 @@ TEST_CASE("resolve_root joins relative roots to the exe dir", "[batman-ak][custo
     CHECK(resolve_root(exe_dir, L"..\\..\\DLC\\Custom") == fs::path(L"C:\\Game\\DLC\\Custom"));
     CHECK(resolve_root(exe_dir, L"D:\\Custom") == fs::path(L"D:\\Custom"));
 }
+
+TEST_CASE("resolve_root treats forward slashes as separators", "[batman-ak][custom_content]") {
+    const fs::path exe_dir = L"C:\\Game\\Binaries\\Win64";
+    CHECK(resolve_root(exe_dir, L"../../DLC/Custom").lexically_normal() ==
+          resolve_root(exe_dir, L"..\\..\\DLC\\Custom").lexically_normal());
+    CHECK(resolve_root(exe_dir, L"./Custom").lexically_normal() ==
+          fs::path(L"C:\\Game\\Binaries\\Win64\\Custom").lexically_normal());
+}
