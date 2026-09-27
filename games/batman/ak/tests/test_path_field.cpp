@@ -44,6 +44,33 @@ TEST_CASE("path_field trims and falls back on blank", "[batman-ak][path_field]")
     CHECK(field.get() == L"D:\\Custom");
 }
 
+TEST_CASE("path_field strips a quoted value", "[batman-ak][path_field]") {
+    mINI::INIStructure ini;
+    ini["DLCLoader"]["CustomRoot"] = "\"D:\\My Custom\"";
+
+    path_field field("DLCLoader", "CustomRoot", L"..\\..\\DLC\\Custom");
+    field.load_from(ini);
+    CHECK(field.get() == L"D:\\My Custom");
+}
+
+TEST_CASE("path_field falls back on a quoted blank value", "[batman-ak][path_field]") {
+    mINI::INIStructure ini;
+    ini["DLCLoader"]["CustomRoot"] = "\"\"";
+
+    path_field field("DLCLoader", "CustomRoot", L"..\\..\\DLC\\Custom");
+    field.load_from(ini);
+    CHECK(field.get() == L"..\\..\\DLC\\Custom");
+}
+
+TEST_CASE("path_field leaves a lone quote untouched", "[batman-ak][path_field]") {
+    mINI::INIStructure ini;
+    ini["DLCLoader"]["CustomRoot"] = "\"";
+
+    path_field field("DLCLoader", "CustomRoot", L"..\\..\\DLC\\Custom");
+    field.load_from(ini);
+    CHECK(field.get() == L"\"");
+}
+
 TEST_CASE("path_field returns to default when the key goes away", "[batman-ak][path_field]") {
     mINI::INIStructure ini;
     ini["DLCLoader"]["CustomRoot"] = "D:\\Custom";

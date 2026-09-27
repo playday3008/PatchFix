@@ -33,8 +33,11 @@ namespace games::batman::ak {
             const auto        sec = ini.get(std::string(section_));
             const std::string k(key_);
             const std::string raw  = sec.get(k);
-            const auto        text = sec.has(k) ? hooks::detail::trim(raw) : std::string_view {};
-            std::wstring      val  = text.empty() ? default_ : widen(text);
+            auto              text = sec.has(k) ? hooks::detail::trim(raw) : std::string_view {};
+            if (text.size() >= 2 && text.front() == '"' && text.back() == '"') {
+                text = hooks::detail::trim(text.substr(1, text.size() - 2));
+            }
+            std::wstring val = text.empty() ? default_ : widen(text);
 
             const std::scoped_lock lock(mutex_);
             value_ = std::move(val);
