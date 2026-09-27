@@ -6,7 +6,7 @@ Steam build only for now.
 
 ## Features
 
-- **DLC loader.** Every folder under `DLC/Custom` (set with `[DLCLoader] CustomRoot`) is installed as a DLC bundle after the game's own DLC, with no Steam ownership check. A folder can add content or replace base game and DLC files of the same name; folders load in name order, so a later folder wins.
+- **DLC loader.** Every folder under `DLC/Custom` (set with `[DLCLoader] CustomRoot`) is installed as a DLC bundle after the game's own DLC, with no Steam ownership check. A folder can add content, replace packages and other files of the same name, and merge its ini and int files into the game's. Folders load in name order, so zero-padded prefixes (`10_`, `20_`) set priority.
 
 ## Building
 
