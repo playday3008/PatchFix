@@ -39,6 +39,18 @@ jobs:
           find core games tests -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
             | xargs -0 clang-format --dry-run --Werror
 
+      - name: Content localization encoding check
+        run: |
+          # The game silently ignores localization files that are not UTF-16 LE with a BOM.
+          bad=0
+          while IFS= read -r -d '' f; do
+            if [ "$(head -c2 "$f" | od -An -tx1 | tr -d ' \n')" != "fffe" ]; then
+              echo "::error file=$f::not UTF-16 LE with a BOM"
+              bad=1
+            fi
+          done < <(find games -path '*/content/*/Localization/*' -type f -print0)
+          exit $bad
+
   tidy:
     name: Clang-Tidy
     runs-on: ubuntu-latest
