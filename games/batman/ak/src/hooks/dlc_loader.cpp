@@ -1,10 +1,13 @@
 #include "games/batman/ak/hooks/dlc_loader.hpp"
 
+#include <cwchar>
+
 #include <array>
 #include <exception>
 #include <filesystem>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include <Windows.h>
 
@@ -44,6 +47,46 @@ namespace games::batman::ak {
             return std::filesystem::path(std::wstring(buf.data(), len)).parent_path();
         }
 
+        // Folders under DLC (the game's own, not Custom) that Steam did not
+        // install: either not a bare appid, or an appid Steam does not report
+        // owned and installed. Logged before custom_root's own folders install,
+        // so mgr's InstalledDLC still holds only the game's own entries.
+        void log_discarded_dlc(UDownloadableContentManager *mgr,
+                               const std::filesystem::path &custom_root) {
+            const auto dlc_dir = (exe_dir() / L"..\\..\\DLC").lexically_normal();
+
+            std::error_code list_ec;
+            const auto      folders = custom_content::list_folders(dlc_dir, list_ec);
+            if (list_ec) {
+                log::get()->warn("DLCLoader: could not list {}: {}",
+                                 utf8(dlc_dir.wstring()),
+                                 list_ec.message());
+                return;
+            }
+
+            std::vector<std::wstring> names;
+            for (const auto &folder : folders) {
+                if (_wcsicmp(folder.lexically_normal().wstring().c_str(),
+                             custom_root.wstring().c_str()) == 0) {
+                    continue;
+                }
+                names.push_back(folder.filename().wstring());
+            }
+
+            std::vector<std::wstring> installed;
+            installed.reserve(mgr->InstalledDLC.size());
+            for (const auto &entry : mgr->InstalledDLC) {
+                installed.push_back(entry.ToWideString());
+            }
+
+            for (const auto &discarded : custom_content::discarded_dlc(names, installed)) {
+                const char *why = discarded.reason == custom_content::DiscardReason::NotAnAppId
+                                      ? "not an appid, the game ignores it"
+                                      : "Steam does not report it owned and installed";
+                log::get()->info("DLCLoader: DLC\\{} not installed: {}", utf8(discarded.name), why);
+            }
+        }
+
         void install_custom_content(UDownloadableContentManager *mgr) {
             const auto configured = registry().config<Tag>().custom_root.get();
             const auto root       = custom_content::resolve_root(exe_dir(), configured);
@@ -62,6 +105,13 @@ namespace games::batman::ak {
                 log::get()->warn("DLCLoader: could not list {}: {}",
                                  utf8(root.wstring()),
                                  list_ec.message());
+            }
+
+            // Diagnostic only: a failure here must not stop custom content installing.
+            try {
+                log_discarded_dlc(mgr, root);
+            } catch (const std::exception &e) {
+                log::get()->warn("DLCLoader: could not check the game's DLC folders: {}", e.what());
             }
 
             for (const auto &folder : folders) {
@@ -156,6 +206,12 @@ namespace games::batman::ak {
 namespace hooks {
     auto HookTraits<games::batman::ak::DLCLoaderHook>::install([[maybe_unused]] const Addrs &addrs)
         -> bool {
+        if (GetModuleHandleW(L"steam_api64.dll") == nullptr) {
+            log::get()->info(
+                "Arkham Knight DLCLoaderHook: this build loads every folder under DLC itself, "
+                "loader not needed");
+            return true;
+        }
         games::batman::ak::subscribe(&games::batman::ak::on_process_event);
         log::get()->info("Arkham Knight DLCLoaderHook: subscribed to ProcessEvent");
         return true;

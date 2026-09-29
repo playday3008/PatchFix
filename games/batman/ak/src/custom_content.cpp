@@ -1,5 +1,6 @@
 #include "games/batman/ak/custom_content.hpp"
 
+#include <cstdlib>
 #include <cwchar>
 
 #include <algorithm>
@@ -26,7 +27,13 @@ namespace games::batman::ak::custom_content {
 
     auto resolve_root(const fs::path &exe_dir, std::wstring_view configured) -> fs::path {
         const fs::path root(configured);
-        return (root.is_absolute() ? root : exe_dir / root).lexically_normal();
+        auto           out = (root.is_absolute() ? root : exe_dir / root).lexically_normal();
+        // lexically_normal keeps a trailing separator ("..\Custom\"), which
+        // would not compare equal to the same folder found by a directory scan.
+        if (!out.has_filename() && out.has_relative_path()) {
+            out = out.parent_path();
+        }
+        return out;
     }
 
     auto game_prefix(std::wstring_view configured, std::wstring_view folder) -> std::wstring {
@@ -85,5 +92,25 @@ namespace games::batman::ak::custom_content {
                 .push_back(std::move(game_path));
         }
         return bundle;
+    }
+
+    auto discarded_dlc(const std::vector<std::wstring> &dlc_folders,
+                       const std::vector<std::wstring> &installed) -> std::vector<Discarded> {
+        const auto is_installed = [&installed](const std::wstring &name) -> bool {
+            return std::ranges::any_of(installed, [&name](const std::wstring &i) -> bool {
+                return !iless(name, i) && !iless(i, name);
+            });
+        };
+
+        std::vector<Discarded> out;
+        for (const auto &name : dlc_folders) {
+            if (is_installed(name)) {
+                continue;
+            }
+            const auto reason = _wtoi(name.c_str()) == 0 ? DiscardReason::NotAnAppId
+                                                         : DiscardReason::RejectedBySteam;
+            out.push_back(Discarded {.name = name, .reason = reason});
+        }
+        return out;
     }
 } // namespace games::batman::ak::custom_content

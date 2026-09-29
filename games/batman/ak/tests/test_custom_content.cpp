@@ -130,3 +130,64 @@ TEST_CASE("resolve_root treats forward slashes as separators", "[batman-ak][cust
     CHECK(resolve_root(exe_dir, L"./Custom").lexically_normal() ==
           fs::path(L"C:\\Game\\Binaries\\Win64\\Custom").lexically_normal());
 }
+
+TEST_CASE("resolve_root drops a trailing separator", "[batman-ak][custom_content]") {
+    const fs::path exe_dir = L"C:\\Game\\Binaries\\Win64";
+    CHECK(resolve_root(exe_dir, L"..\\..\\DLC\\Custom\\") == fs::path(L"C:\\Game\\DLC\\Custom"));
+    CHECK(resolve_root(exe_dir, L"../../DLC/Custom/") == fs::path(L"C:\\Game\\DLC\\Custom"));
+    CHECK(resolve_root(exe_dir, L"C:\\") == fs::path(L"C:\\"));
+}
+
+TEST_CASE("discarded_dlc keeps installed appids out of the result", "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"313100"}, {L"313100"});
+    CHECK(discarded.empty());
+}
+
+TEST_CASE("discarded_dlc reports a non-installed numeric folder as RejectedBySteam",
+          "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"313100"}, {});
+    REQUIRE(discarded.size() == 1);
+    CHECK(discarded[0].name == L"313100");
+    CHECK(discarded[0].reason == DiscardReason::RejectedBySteam);
+}
+
+// The game parses folder names with _wtoi, so a leading appid is enough.
+TEST_CASE("discarded_dlc accepts a folder name that starts with an appid",
+          "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"313100 - Copy"}, {});
+    REQUIRE(discarded.size() == 1);
+    CHECK(discarded[0].reason == DiscardReason::RejectedBySteam);
+}
+
+TEST_CASE("discarded_dlc reports non-numeric folders as NotAnAppId",
+          "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"Custom", L"SkinFoo"}, {});
+    REQUIRE(discarded.size() == 2);
+    CHECK(discarded[0].name == L"Custom");
+    CHECK(discarded[0].reason == DiscardReason::NotAnAppId);
+    CHECK(discarded[1].name == L"SkinFoo");
+    CHECK(discarded[1].reason == DiscardReason::NotAnAppId);
+}
+
+TEST_CASE("discarded_dlc treats a folder named 0 as NotAnAppId", "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"0"}, {});
+    REQUIRE(discarded.size() == 1);
+    CHECK(discarded[0].reason == DiscardReason::NotAnAppId);
+}
+
+TEST_CASE("discarded_dlc matches installed names case-insensitively",
+          "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"Custom"}, {L"CUSTOM"});
+    CHECK(discarded.empty());
+}
+
+TEST_CASE("discarded_dlc follows dlc_folders order", "[batman-ak][custom_content]") {
+    const auto discarded = discarded_dlc({L"beta", L"313100", L"alpha"}, {L"313100"});
+    REQUIRE(discarded.size() == 2);
+    CHECK(discarded[0].name == L"beta");
+    CHECK(discarded[1].name == L"alpha");
+}
+
+TEST_CASE("discarded_dlc on empty inputs is empty", "[batman-ak][custom_content]") {
+    CHECK(discarded_dlc({}, {}).empty());
+}
