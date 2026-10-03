@@ -2,6 +2,9 @@
 
 #include <cstdint>
 
+#include <string>
+#include <string_view>
+
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/x64.hpp"
@@ -47,5 +50,36 @@ namespace games::batman::ak::sdk {
 
     auto make_string_array(std::span<const std::wstring> items) -> TArray<FString> {
         return make_string_array(s_realloc, items);
+    }
+
+    void free_buffer(void *ptr) {
+        if (ptr != nullptr) {
+            s_realloc(ptr, 0, 8);
+        }
+    }
+
+    auto DeferredName::index() -> int {
+        if (index_ >= 0) {
+            return index_;
+        }
+        const auto *names = FName::Names();
+        const auto  count = names != nullptr ? names->size() : 0;
+        if (!gate_.should_attempt(count)) {
+            return -1;
+        }
+
+        index_ = FName(std::string(name_).c_str()).GetDisplayIndex();
+        if (index_ < 0) {
+            gate_.record_failure(count);
+            if (!logged_miss_) {
+                logged_miss_ = true;
+                log::get()->debug("{}: {} not registered yet, will retry when names change",
+                                  component_,
+                                  name_);
+            }
+            return -1;
+        }
+        log::get()->info("{}: {} resolved to name index {}", component_, name_, index_);
+        return index_;
     }
 } // namespace games::batman::ak::sdk

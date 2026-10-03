@@ -29,13 +29,13 @@ namespace games::batman::ak {
     namespace {
         using Tag = DLCLoaderHook;
 
-        // Game thread only. The lookup runs once; a miss disables the loader
-        // for the session. s_installing stops InstallDLC, which re-enters
+        // Game thread only. s_installing stops InstallDLC, which re-enters
         // ProcessEvent, from triggering a nested install.
         bool    s_disabled      = false;
         bool    s_installing    = false;
-        int     s_trigger_name  = -1;
         UClass *s_manager_class = nullptr;
+
+        sdk::DeferredName s_trigger_name {"DLCLoader", "RefreshDLCEnumComplete"};
 
         auto utf8(const std::wstring &s) -> std::string {
             return win32::wchar_to_utf8(s.c_str(), static_cast<int>(s.size()));
@@ -156,16 +156,9 @@ namespace games::batman::ak {
             }
 
             try {
-                if (s_trigger_name < 0) {
-                    s_trigger_name = FName("RefreshDLCEnumComplete").GetDisplayIndex();
-                    if (s_trigger_name < 0) {
-                        log::get()->error("DLCLoader: trigger function not found");
-                        s_disabled = true;
-                        return;
-                    }
-                }
-
-                if (fn->Name.GetDisplayIndex() != s_trigger_name || self == nullptr) {
+                const auto trigger_name = s_trigger_name.index();
+                if (trigger_name < 0 || fn->Name.GetDisplayIndex() != trigger_name ||
+                    self == nullptr) {
                     return;
                 }
 

@@ -83,4 +83,51 @@ namespace games::batman::ak::sdk {
     // The same, using the game allocator stored by init.
     auto make_fstring(std::wstring_view s) -> FString;
     auto make_string_array(std::span<const std::wstring> items) -> TArray<FString>;
+
+    // Frees a buffer from the game allocator stored by init (appRealloc to
+    // size 0). Null is a no-op.
+    void free_buffer(void *ptr);
+
+    // Whether a lookup that failed last time should be retried, given the
+    // current size of the table it failed against. GNames only grows, so a
+    // lookup can only start succeeding once something new was added to it;
+    // this lets a caller skip repeating a full scan on every call until
+    // that actually happens.
+    class RetryGate {
+      public:
+        [[nodiscard]] auto should_attempt(std::int32_t count) const -> bool {
+            return !attempted_ || count != last_count_;
+        }
+
+        void record_failure(std::int32_t count) {
+            attempted_  = true;
+            last_count_ = count;
+        }
+
+      private:
+        bool         attempted_  = false;
+        std::int32_t last_count_ = 0;
+    };
+
+    // Resolves an FName once and caches the result. The lookup is a linear
+    // scan of every registered name, so this retries a failed lookup only
+    // when RetryGate says GNames has grown since the last attempt, rather
+    // than on every call.
+    class DeferredName {
+      public:
+        // component and name are used only in log messages, e.g. "TutorialLines", "GetLines".
+        constexpr DeferredName(std::string_view component, std::string_view name) noexcept
+            : component_(component),
+              name_(name) {}
+
+        // -1 while the name has not resolved yet.
+        [[nodiscard]] auto index() -> int;
+
+      private:
+        std::string_view component_;
+        std::string_view name_;
+        RetryGate        gate_;
+        int              index_       = -1;
+        bool             logged_miss_ = false;
+    };
 } // namespace games::batman::ak::sdk
