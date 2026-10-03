@@ -66,6 +66,55 @@ namespace hooks {
             });
         }
 
+        inline auto ascii_upper(char c) -> char {
+            return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+
+        // "0x01".."0xFE" (prefix already checked) as a virtual-key code.
+        inline auto parse_hex_key(std::string_view digits) -> std::optional<int> {
+            int v = 0;
+            for (const char c : digits) {
+                const char u = ascii_upper(c);
+                if (u >= '0' && u <= '9') {
+                    v = (v * 16) + (u - '0');
+                } else if (u >= 'A' && u <= 'F') {
+                    v = (v * 16) + (u - 'A' + 10);
+                } else {
+                    return std::nullopt;
+                }
+            }
+            return v >= 0x01 && v <= 0xFE ? std::optional<int> {v} : std::nullopt;
+        }
+
+        // "1".."24" after the F of an F-key, as VK_F1..VK_F24.
+        inline auto parse_function_key(std::string_view digits) -> std::optional<int> {
+            int v          = 0;
+            auto [ptr, ec] = sv_from_chars(digits, v);
+            if (ec != std::errc {} || !consumed_all(digits, ptr) || v < 1 || v > 24) {
+                return std::nullopt;
+            }
+            return 0x70 + v - 1;
+        }
+
+        // F1-F24, A-Z, 0-9 or a hex code 0x01-0xFE, case-insensitive.
+        inline auto parse_virtual_key(std::string_view text) -> std::optional<int> {
+            const auto s = trim(text);
+            if (s.size() == 1) {
+                const char c = ascii_upper(s.front());
+                if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+                    return c;
+                }
+                return std::nullopt;
+            }
+            if (s.size() >= 3 && s.size() <= 4 && s.front() == '0' && ascii_upper(s.at(1)) == 'X') {
+                return parse_hex_key(s.substr(2));
+            }
+            if (s.size() >= 2 && s.size() <= 3 && ascii_upper(s.front()) == 'F') {
+                return parse_function_key(s.substr(1));
+            }
+            return std::nullopt;
+        }
+
         template<typename E, std::size_t N>
         auto parse_enum(const std::string                                   &s,
                         const std::array<std::pair<std::string_view, E>, N> &table,
@@ -152,6 +201,38 @@ namespace hooks {
     struct clamped_unit_parser {
         [[maybe_unused]] static auto operator()(const std::string &s) -> float {
             return std::clamp(default_parser<float> {}(s), 0.0F, 1.0F);
+        }
+    };
+
+    // An integer in [Min, Max]; anything else, including trailing text, gives Default.
+    template<int Min, int Max, int Default>
+        requires(Min <= Default && Default <= Max)
+    struct int_range_parser {
+        [[maybe_unused]] static auto operator()(const std::string &s) -> int {
+            const auto text = detail::trim(s);
+            int        v    = 0;
+            auto [ptr, ec]  = detail::sv_from_chars(text, v);
+            if (ec != std::errc {} || !detail::consumed_all(text, ptr) || v < Min || v > Max) {
+                return Default;
+            }
+            return v;
+        }
+    };
+
+    // A finite float in [Min, Max]; anything else gives Default.
+    template<float Min, float Max, float Default>
+        requires(Min <= Default && Default <= Max)
+    struct float_range_parser {
+        [[maybe_unused]] static auto operator()(const std::string &s) -> float {
+            const auto v = detail::parse_finite(s);
+            return v && *v >= Min && *v <= Max ? *v : Default;
+        }
+    };
+
+    // A Windows virtual-key code (see detail::parse_virtual_key); 0 when not recognised.
+    struct virtual_key_parser {
+        [[maybe_unused]] static auto operator()(const std::string &s) -> int {
+            return detail::parse_virtual_key(s).value_or(0);
         }
     };
 } // namespace hooks
