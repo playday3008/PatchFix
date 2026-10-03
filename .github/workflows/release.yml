@@ -219,6 +219,10 @@ jobs:
             cp "$asi" "${name}-wine.asi"
           done
           cp "games/${{ inputs.game }}"/*.ini .
+          if [ -d "games/${{ inputs.game }}/content" ]; then
+            NAME=$(sed -n 's/^project(\([^ )]*\).*/\1/p' "games/${{ inputs.game }}/CMakeLists.txt")
+            (cd "games/${{ inputs.game }}/content" && zip -rX "$GITHUB_WORKSPACE/${NAME}.PatchFix-content.zip" .)
+          fi
 
       - name: Generate release notes
         env:
@@ -247,3 +251,4 @@ jobs:
           files: |
             *.asi
             *.ini
+            *.zip

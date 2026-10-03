@@ -178,3 +178,45 @@ TEST_CASE("parse_enum without _count allows any integer", "[parsers][enum]") {
           static_cast<Sparse>(99));
     CHECK(detail::parse_enum<Sparse>(std::string("b"), table, Sparse::A) == Sparse::B);
 }
+
+TEST_CASE("int_range_parser keeps values in range", "[parsers][range]") {
+    using p = int_range_parser<0, 16, 4>;
+    CHECK(p {}("8") == 8);
+    CHECK(p {}(" 0 ") == 0);
+    CHECK(p {}("16") == 16);
+    CHECK(p {}("17") == 4);
+    CHECK(p {}("-1") == 4);
+    CHECK(p {}("3x") == 4);
+    CHECK(p {}("") == 4);
+}
+
+TEST_CASE("float_range_parser keeps finite values in range", "[parsers][range]") {
+    using p = float_range_parser<0.05F, 1.0F, 0.5F>;
+    CHECK(p {}("0.25") == Catch::Approx(0.25F));
+    CHECK(p {}("1") == Catch::Approx(1.0F));
+    CHECK(p {}("0.05") == Catch::Approx(0.05F));
+    CHECK(p {}("0.01") == Catch::Approx(0.5F));
+    CHECK(p {}("nan") == Catch::Approx(0.5F));
+    CHECK(p {}("x") == Catch::Approx(0.5F));
+}
+
+TEST_CASE("parse_virtual_key accepts F-keys, letters, digits and hex", "[parsers][vk]") {
+    CHECK(detail::parse_virtual_key("F1") == 0x70);
+    CHECK(detail::parse_virtual_key("f24") == 0x87);
+    CHECK(detail::parse_virtual_key("F25") == std::nullopt);
+    CHECK(detail::parse_virtual_key("F0") == std::nullopt);
+    CHECK(detail::parse_virtual_key("a") == 'A');
+    CHECK(detail::parse_virtual_key("7") == '7');
+    CHECK(detail::parse_virtual_key(" F6 ") == 0x75);
+    CHECK(detail::parse_virtual_key("0x01") == 0x01);
+    CHECK(detail::parse_virtual_key("0XfE") == 0xFE);
+    CHECK(detail::parse_virtual_key("0x00") == std::nullopt);
+    CHECK(detail::parse_virtual_key("0xFF") == std::nullopt);
+    CHECK(detail::parse_virtual_key("") == std::nullopt);
+    CHECK(detail::parse_virtual_key("Space") == std::nullopt);
+}
+
+TEST_CASE("virtual_key_parser gives 0 for an unknown key", "[parsers][vk]") {
+    CHECK(virtual_key_parser {}("nope") == 0);
+    CHECK(virtual_key_parser {}("F6") == 0x75);
+}

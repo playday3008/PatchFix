@@ -1,5 +1,6 @@
 add_executable(PatchFix.Tests
     test_parsers.cpp
+    test_path_field.cpp
     test_ini_field.cpp
     test_topo_sort.cpp
     test_pattern_report.cpp
