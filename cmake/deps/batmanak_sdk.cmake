@@ -6,7 +6,7 @@ include(FetchContent)
 # a regenerated SDK.
 FetchContent_Declare(BmAK-UDK
     GIT_REPOSITORY https://github.com/playday3008/BmAK-UDK.git
-    GIT_TAG        fbf7830ff31aa931cb15207f574fd61d7bca6571
+    GIT_TAG        f096a9a91b8c3b5061f5b3d5f09c2b28e7a4bbc1
     GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
