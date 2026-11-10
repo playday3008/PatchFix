@@ -9,6 +9,7 @@
 #include "core/diagnostics/address_registry.hpp"
 #include "core/diagnostics/crash_handler.hpp"
 #include "core/diagnostics/crash_journal.hpp"
+#include "core/mem/trampoline_pool.hpp"
 #include "core/vmp/integrity_bypass.hpp"
 #include "core/win32/timer_resolution.hpp"
 
@@ -39,6 +40,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
         DisableThreadLibraryCalls(hModule);
         diagnostics::register_plugin_module(hModule);
         diagnostics::install_veh();
+        // Before the init thread: the game claims memory near its image while
+        // init waits on VMProtect, leaving no room for trampolines by hook time.
+        mem::trampoline_pool::reserve_near_main_image();
         g_init_thread = std::make_unique<std::jthread>(
             [hModule](const std::stop_token &stop) -> void { game_init(hModule, stop); });
     } else if (reason == DLL_PROCESS_DETACH) {
