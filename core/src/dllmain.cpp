@@ -62,7 +62,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
 
         // On process exit the OS reclaims everything, and the remaining calls all
         // touch state the terminated threads may have been holding locks over.
+        // The journal write is the exception: it takes no lock of ours, and if a
+        // terminated thread left the heap lock held, Windows ends the process
+        // instead of waiting, which only loses the marker. A crash never reaches
+        // this point, so this is what marks a normal exit as clean.
         if (lpReserved != nullptr) {
+            diagnostics::crash_journal::write_session_clean();
             return TRUE;
         }
 
