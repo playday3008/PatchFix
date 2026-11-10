@@ -4,11 +4,15 @@ add_executable(PatchFix.Tests
     test_topo_sort.cpp
     test_pattern_report.cpp
     test_pe_file.cpp
+    test_trampoline_pool.cpp
+    "${CMAKE_SOURCE_DIR}/core/src/mem/trampoline_pool.cpp"
+    "${CMAKE_SOURCE_DIR}/core/src/win32/pe.cpp"
 )
 
 target_link_libraries(PatchFix.Tests PRIVATE
     Catch2::Catch2WithMain
     mINI
+    safetyhook
 )
 
 target_include_directories(PatchFix.Tests PRIVATE
