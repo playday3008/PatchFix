@@ -16,6 +16,7 @@
 #include "core/diagnostics/crash_journal.hpp"
 #include "core/diagnostics/crash_logger.hpp"
 #include "core/mem/protect.hpp"
+#include "core/mem/trampoline_pool.hpp"
 #include "core/patterns/signatures.hpp"
 #include "core/vmp/debug_breakin.hpp"
 #include "core/vmp/integrity_bypass.hpp"
@@ -142,6 +143,15 @@ void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &regi
     log::init((dll_dir / (log_name + ".log")).string());
     diagnostics::init_log();
     log::get()->info("{} v{} initializing for {}", log_name, plugin::version::string, exe_name);
+
+    if (const auto &pool = mem::trampoline_pool::main_image_reservation()) {
+        log::get()->info("Trampoline pool: {} KiB at 0x{:X}",
+                         mem::trampoline_pool::k_size / 1024,
+                         *pool);
+    } else {
+        log::get()->warn("Trampoline pool unavailable ({}); hooks at RIP-relative sites may fail",
+                         pool.error());
+    }
 
     auto ini_path = dll_dir / (log_name + ".ini");
     init_game<G>(registry, ini_path, stop);

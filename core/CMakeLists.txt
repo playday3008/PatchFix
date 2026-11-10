@@ -5,6 +5,7 @@ add_library(PatchFix.Core OBJECT
     src/dllmain.cpp
     src/mem/protect.cpp
     src/mem/hook.cpp
+    src/mem/trampoline_pool.cpp
     src/vmp/integrity_bypass.cpp
     src/vmp/debug_breakin.cpp
     src/vmp/pe_sections.cpp
