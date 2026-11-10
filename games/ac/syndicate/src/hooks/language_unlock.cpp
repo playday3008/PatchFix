@@ -1,5 +1,6 @@
 #include "games/ac/syndicate/hooks/language_unlock.hpp"
 
+#include <cstddef>
 #include <cstdint>
 
 #include <string_view>
@@ -26,9 +27,17 @@ namespace hooks {
         constexpr std::uintptr_t k_bf_write_fallback_offset = 0x121;
         constexpr bf             k_loctest_bit              = bitfield::bit(Language::LocTest);
 
+        // The hook erases the three RIP-relative stores at the site and replays
+        // them in the callback: a RIP-relative instruction pins the trampoline
+        // within +/-2 GB of the image, and that range can be fully reserved by
+        // the time hooks install.
+        constexpr std::size_t k_replayed_stores_size = 18;
+
         std::uint32_t *s_menu_bf_global     = nullptr;
         std::uint32_t *s_subtitle_bf_global = nullptr;
         std::uint32_t *s_audio_bf_global    = nullptr;
+        // Third replayed store (`mov [rip+disp32], eax`), next to the menu bitfield.
+        std::uint32_t *s_eax_store_global = nullptr;
 
         bf s_eff_menu     = 0;
         bf s_eff_subtitle = 0;
@@ -47,6 +56,10 @@ namespace hooks {
                 regs.rdi = s_eff_menu;
                 regs.rsi = s_eff_subtitle;
                 regs.rbx = s_eff_audio;
+
+                *s_menu_bf_global   = s_eff_menu;
+                *s_audio_bf_global  = s_eff_audio;
+                *s_eax_store_global = static_cast<std::uint32_t>(regs.rax);
             }
         };
     } // namespace
@@ -83,6 +96,8 @@ namespace hooks {
         s_menu_bf_global = reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 2));
         s_audio_bf_global =
             reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 8));
+        s_eax_store_global =
+            reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 0x0E));
         s_subtitle_bf_global =
             reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 0x18));
 
@@ -96,7 +111,9 @@ namespace hooks {
         *s_subtitle_bf_global = s_eff_subtitle;
         *s_audio_bf_global    = s_eff_audio;
 
-        auto hook_result = mem::make_hook<LangBitfieldPatch>(lang_bf_write);
+        auto hook_result =
+            mem::make_hook<LangBitfieldPatch>(lang_bf_write,
+                                              lang_bf_write + k_replayed_stores_size);
         if (!hook_result) {
             log::get()->error("Syndicate LanguageUnlockHook: hook failed: {}", hook_result.error());
             return false;

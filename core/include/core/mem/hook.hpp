@@ -2,10 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include <expected>
 #include <span>
 #include <string>
+#include <vector>
 
 #include <safetyhook/context.hpp>
 #include <safetyhook/mid_hook.hpp>
@@ -65,10 +67,18 @@ namespace mem {
         // Callers that pass an end emulate the instructions they erase. If the
         // erase fails the originals still run and the functor's emulation runs on
         // top, applying the transform twice, so refuse to install instead.
-        if (end > addr && !nop(addr, end - addr)) {
+        const std::size_t         size = end > addr ? end - addr : 0;
+        std::vector<std::uint8_t> saved(size);
+        std::memcpy(saved.data(), reinterpret_cast<const void *>(addr), size);
+        if (size != 0 && !nop(addr, size)) {
             return std::unexpected("MidHook: failed to erase the replaced instructions");
         }
         auto result = MidHook::create(addr, diagnostics::guarded_callback<Functor>);
+        // Without the hook nothing emulates the erased instructions, so put them back.
+        if (!result && size != 0 && !write(addr, saved.data(), size)) {
+            return std::unexpected(result.error() +
+                                   "; restoring the erased instructions also failed");
+        }
         if (result) {
             diagnostics::patch_registry::register_patch(
                 addr,

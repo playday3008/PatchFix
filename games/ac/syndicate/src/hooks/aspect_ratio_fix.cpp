@@ -1,5 +1,6 @@
 #include "games/ac/syndicate/hooks/aspect_ratio_fix.hpp"
 
+#include <cstddef>
 #include <cstdint>
 
 #include <atomic>
@@ -10,6 +11,7 @@
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
+#include "core/mem/x64.hpp"
 
 #include "games/ac/syndicate/registry.hpp"
 #include "games/ac/syndicate/structs.hpp"
@@ -30,10 +32,18 @@ namespace hooks {
         mem::MidHook g_hook;
 #pragma clang diagnostic pop
 
+        // The hooked `mov rcx, [rip+disp32]` is erased and replayed here: a
+        // RIP-relative instruction pins the trampoline within +/-2 GB of the
+        // image, and that range can be fully reserved by the time hooks install.
+        constexpr std::size_t k_load_rcx_size = 7;
+        std::uintptr_t       *s_rcx_source    = nullptr;
+
         struct MirrorAspect {
             [[maybe_unused]] static constexpr std::string_view name = "AspectRatioFix";
 
             [[maybe_unused]] static void operator()(mem::Registers &regs) {
+                regs.rcx = *s_rcx_source;
+
                 if (!games::ac::syndicate::registry().enabled<Tag>()) {
                     return;
                 }
@@ -88,7 +98,9 @@ namespace hooks {
         auto addr = addrs.aspect_recompute.value();
         log::get()->trace("Syndicate AspectRatioFixHook: aspect recompute tail at 0x{:X}", addr);
 
-        auto hook_result = mem::make_hook<MirrorAspect>(addr);
+        s_rcx_source = reinterpret_cast<std::uintptr_t *>(mem::x64::read_rel(addr + 3));
+
+        auto hook_result = mem::make_hook<MirrorAspect>(addr, addr + k_load_rcx_size);
         if (!hook_result) {
             log::get()->error("Syndicate AspectRatioFixHook: hook failed: {}", hook_result.error());
             return false;
