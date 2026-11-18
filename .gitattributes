@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Game content bundle files (config, README) need CRLF; localization files
+# are UTF-16 LE with CRLF and must never be normalized.
+games/*/*/content/** text eol=crlf
+games/*/*/content/**/Localization/** -text diff=utf16
