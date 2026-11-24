@@ -6,7 +6,7 @@
             "displayName": "Wine x64",
             "generator": "Ninja Multi-Config",
             "toolchainFile": "${sourceDir}/cmake/toolchains/msvc-wine-clang-cl-x64.cmake",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/x64",
             "cacheVariables": {
                 "CMAKE_CONFIGURATION_TYPES": "Release;Debug",
                 "PATCHFIX_BUILD_TESTS": "ON",
@@ -41,7 +41,7 @@
             "generator": "Visual Studio 18 2026",
             "architecture": "x64",
             "toolset": "ClangCL",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/x64",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "PATCHFIX_BUILD_TESTS": "ON",
@@ -59,7 +59,7 @@
             "generator": "Visual Studio 18 2026",
             "architecture": "x64",
             "toolset": "ClangCL",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/x64",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "PATCHFIX_BUILD_TESTS": "ON",

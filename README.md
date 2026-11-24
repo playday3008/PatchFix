@@ -81,7 +81,7 @@ cmake --preset wine-x64
 cmake --build --preset wine-x64-release
 ```
 
-Output: one `.asi` per game in `build/bin/Release/`. To build a single game, pass its target, e.g. `cmake --build --preset wine-x64-release --target ac-rogue`.
+Output: one `.asi` per game in `build/<arch>/bin/Release/` (`x64` or `x86`, per the game's `patchfix_add_game(ARCH ...)`); x86 games build with the `wine-x86` / `windows-x86-*` presets. To build a single game, pass its target, e.g. `cmake --build --preset wine-x64-release --target ac-rogue`.
 
 ### Adding a game
 

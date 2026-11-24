@@ -6,6 +6,23 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
 project(PatchFix LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Preset builds live in build/<arch>. Point build/compile_commands.json at the
+# most recently configured or built one so clangd follows whichever arch is in
+# use. CMake has no variable for it, but only Ninja and Makefile generators
+# write a compile database.
+cmake_path(GET CMAKE_BINARY_DIR PARENT_PATH PATCHFIX_BUILD_ROOT)
+if(CMAKE_GENERATOR MATCHES "Ninja|Makefiles" AND PATCHFIX_BUILD_ROOT STREQUAL "${CMAKE_SOURCE_DIR}/build")
+    cmake_path(GET CMAKE_BINARY_DIR FILENAME PATCHFIX_BUILD_ARCH_DIR)
+    set(PATCHFIX_COMPILE_DB_TARGET "${PATCHFIX_BUILD_ARCH_DIR}/compile_commands.json")
+    set(PATCHFIX_COMPILE_DB_LINK "${PATCHFIX_BUILD_ROOT}/compile_commands.json")
+    file(CREATE_LINK "${PATCHFIX_COMPILE_DB_TARGET}" "${PATCHFIX_COMPILE_DB_LINK}" SYMBOLIC)
+    add_custom_target(PatchFix.CompileDbLink ALL
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${PATCHFIX_COMPILE_DB_TARGET}" "${PATCHFIX_COMPILE_DB_LINK}"
+        VERBATIM
+    )
+endif()
+
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
