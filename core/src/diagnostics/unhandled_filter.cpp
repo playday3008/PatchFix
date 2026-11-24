@@ -27,16 +27,29 @@ namespace diagnostics {
     } // namespace
 #pragma clang diagnostic pop
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
     auto WINAPI unhandled_filter(EXCEPTION_POINTERS *ep) -> LONG {
         auto *report = g_report.load(std::memory_order_acquire);
-        if (report != nullptr && !tl_in_filter) {
+        // A stack overflow leaves a few KB of stack, far less than the reporter
+        // needs; its stack probe would fault again and the process would die
+        // before the chained filter ran.
+        const bool overflow = ep->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW;
+        if (report != nullptr && !overflow && !tl_in_filter) {
             tl_in_filter = true;
-            report(ep);
+            // Game crashes often come from heap corruption that the reporter can
+            // trip over. A fault in it must not replace the original crash, or
+            // the game's own filter would never see it.
+            __try {
+                report(ep);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+            }
             tl_in_filter = false;
         }
         auto *previous = g_previous.load(std::memory_order_acquire);
         return previous != nullptr ? previous(ep) : EXCEPTION_CONTINUE_SEARCH;
     }
+#pragma clang diagnostic pop
 
     auto install_unhandled_filter(CrashReporter report) -> bool {
         if (g_hook) {

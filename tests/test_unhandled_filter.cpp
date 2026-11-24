@@ -12,8 +12,11 @@ namespace {
     int g_b_calls = 0;
     int g_depth   = 0;
 
-    auto WINAPI fake_a(EXCEPTION_POINTERS * /*ep*/) -> LONG {
+    EXCEPTION_POINTERS *g_a_ep = nullptr;
+
+    auto WINAPI fake_a(EXCEPTION_POINTERS *ep) -> LONG {
         ++g_a_calls;
+        g_a_ep = ep;
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
@@ -35,9 +38,15 @@ namespace {
         }
     }
 
+    void faulting_report(EXCEPTION_POINTERS * /*ep*/) {
+        ++g_reports;
+        RaiseException(EXCEPTION_ACCESS_VIOLATION, 0, 0, nullptr);
+    }
+
     struct Installed {
         explicit Installed(diagnostics::CrashReporter report) {
             g_reports = g_a_calls = g_b_calls = g_depth = 0;
+            g_a_ep                                      = nullptr;
             REQUIRE(diagnostics::install_unhandled_filter(report));
         }
         ~Installed() {
@@ -52,8 +61,8 @@ namespace {
 
     class FakeException {
       public:
-        FakeException() {
-            m_record.ExceptionCode     = EXCEPTION_ACCESS_VIOLATION;
+        explicit FakeException(DWORD code = EXCEPTION_ACCESS_VIOLATION) {
+            m_record.ExceptionCode     = code;
             m_pointers.ExceptionRecord = &m_record;
             m_pointers.ContextRecord   = &m_context;
         }
@@ -119,4 +128,27 @@ TEST_CASE("uninstall restores the previous filter", "[unhandled_filter]") {
 
         CHECK(SetUnhandledExceptionFilter(nullptr) == &fake_a);
     }
+}
+
+TEST_CASE("a stack overflow skips the report but still chains", "[unhandled_filter]") {
+    const Installed installed(count_report);
+    FakeException   ex(EXCEPTION_STACK_OVERFLOW);
+
+    SetUnhandledExceptionFilter(fake_a);
+
+    CHECK(diagnostics::unhandled_filter(ex.get()) == EXCEPTION_EXECUTE_HANDLER);
+    CHECK(g_reports == 0);
+    CHECK(g_a_calls == 1);
+}
+
+TEST_CASE("a faulting reporter still chains the original exception", "[unhandled_filter]") {
+    const Installed installed(faulting_report);
+    FakeException   ex;
+
+    SetUnhandledExceptionFilter(fake_a);
+
+    CHECK(diagnostics::unhandled_filter(ex.get()) == EXCEPTION_EXECUTE_HANDLER);
+    CHECK(g_reports == 1);
+    CHECK(g_a_calls == 1);
+    CHECK(g_a_ep == ex.get());
 }
