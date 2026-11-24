@@ -8,8 +8,8 @@
 
 #include "core/logger.hpp" // IWYU pragma: keep
 
+#include "core/mem/insn.hpp"
 #include "core/mem/write.hpp"
-#include "core/mem/x64.hpp"
 
 #include "games/ac/syndicate/registry.hpp"
 
@@ -87,7 +87,7 @@ namespace hooks {
 #pragma clang diagnostic pop
 
         auto mulss_addr   = addrs.fps_frame_time.value();
-        g_frame_time_addr = mem::x64::read_rel(mulss_addr + 4, 4);
+        g_frame_time_addr = mem::insn::read_rel(mulss_addr + 4, 4);
         log::get()->trace("FPSUnlockHook: frame time constant at 0x{:X}", g_frame_time_addr);
 
         g_original_frame_time = mem::read<float>(g_frame_time_addr);

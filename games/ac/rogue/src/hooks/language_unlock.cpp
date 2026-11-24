@@ -9,8 +9,8 @@
 
 #include "core/mem/call.hpp"
 #include "core/mem/hook.hpp"
+#include "core/mem/insn.hpp"
 #include "core/mem/write.hpp"
-#include "core/mem/x64.hpp"
 
 #include "games/ac/rogue/language.hpp"
 #include "games/ac/rogue/registry.hpp"
@@ -146,7 +146,7 @@ namespace hooks {
         if (s_ui_language != Language::None) {
             if (addrs.get_language.has_value()) {
                 s_lang_idx_global = reinterpret_cast<std::uint32_t *>(
-                    mem::x64::read_rel(addrs.get_language.value() + 6));
+                    mem::insn::read_rel(addrs.get_language.value() + 6));
                 *s_lang_idx_global = std::to_underlying(s_ui_language);
                 log::get()->trace("LanguageUnlockHook: lang_idx=0x{:X} override={}",
                                   reinterpret_cast<std::uintptr_t>(s_lang_idx_global),
@@ -160,10 +160,10 @@ namespace hooks {
             // g_languageIndex (above) is only copied into g_uiLanguage once during GameInit,
             // so we must write g_uiLanguage directly to survive InitLanguageFromFile's
             // validation pass that reads GetLanguage() after our hook fires.
-            auto get_lang_fn = mem::x64::branch_target(addrs.lang_setup.value() + 7);
+            auto get_lang_fn = mem::insn::branch_target(addrs.lang_setup.value() + 7);
             if (get_lang_fn) {
                 s_ui_lang_global =
-                    reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(*get_lang_fn + 2));
+                    reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(*get_lang_fn + 2));
                 *s_ui_lang_global = std::to_underlying(s_ui_language);
                 log::get()->trace("LanguageUnlockHook: ui_lang=0x{:X}",
                                   reinterpret_cast<std::uintptr_t>(s_ui_lang_global));
@@ -175,8 +175,8 @@ namespace hooks {
             if (addrs.loc_init.has_value()) {
                 auto loc_init = addrs.loc_init.value();
                 s_loc_mgr_ptr =
-                    reinterpret_cast<std::uintptr_t *>(mem::x64::read_rel(loc_init + 0x0C));
-                auto reload_opt = mem::x64::branch_target(loc_init + 0x20);
+                    reinterpret_cast<std::uintptr_t *>(mem::insn::read_rel(loc_init + 0x0C));
+                auto reload_opt = mem::insn::branch_target(loc_init + 0x20);
                 if (reload_opt) {
                     s_reload_lang_fn = *reload_opt;
                     log::get()->trace("LanguageUnlockHook: loc_mgr_ptr=0x{:X} reload_fn=0x{:X}",
@@ -204,16 +204,17 @@ namespace hooks {
         auto lang_bf_write = addrs.lang_bf_write.value();
         auto lang_setup    = addrs.lang_setup.value();
 
-        auto is_steam_opt = mem::x64::branch_target(get_game_id + 0x12);
+        auto is_steam_opt = mem::insn::branch_target(get_game_id + 0x12);
         if (!is_steam_opt) {
             log::get()->error("LanguageUnlockHook: failed to resolve IsSteam branch target");
             return false;
         }
         s_is_steam_addr = *is_steam_opt;
 
-        s_menu_bf_global = reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 2));
+        s_menu_bf_global =
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 2));
         s_audio_bf_global =
-            reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 8));
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 8));
 
         // Pre-patch bitfields before game main calls GetLanguage/SetGameLanguage.
         // The lang file loader may overwrite these later — the callback re-patches.

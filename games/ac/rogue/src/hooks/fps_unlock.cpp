@@ -6,8 +6,8 @@
 
 #include "core/logger.hpp" // IWYU pragma: keep
 
+#include "core/mem/insn.hpp"
 #include "core/mem/write.hpp"
-#include "core/mem/x64.hpp"
 #include "core/win32/timer_resolution.hpp"
 
 #include "games/ac/rogue/registry.hpp"
@@ -77,7 +77,7 @@ namespace hooks {
 
     auto HookTraits<games::ac::rogue::FPSUnlockHook>::install(const Addrs &addrs) -> bool {
         auto thunk_addr  = addrs.fps_timing_ptr.value();
-        auto global_addr = mem::x64::read_rel(thunk_addr + 3);
+        auto global_addr = mem::insn::read_rel(thunk_addr + 3);
         log::get()->trace("FPSUnlockHook: FrameTiming global at 0x{:X}", global_addr);
 
         auto ft_ptr = mem::read<std::uintptr_t>(global_addr);
@@ -101,7 +101,7 @@ namespace hooks {
                              k_mode_vsync);
         }
 
-        g_cap_period = mem::x64::read_rel(addrs.fps_cap_mulss.value() + 4);
+        g_cap_period = mem::insn::read_rel(addrs.fps_cap_mulss.value() + 4);
         log::get()->trace("FPSUnlockHook: cap period at 0x{:X} ({:.6f} ms)",
                           g_cap_period,
                           mem::read<float>(g_cap_period));

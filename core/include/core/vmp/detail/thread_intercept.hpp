@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#include "core/mem/x64.hpp"
+#include "core/mem/insn.hpp"
 #include "core/vmp/detail/pe_sections.hpp"
 
 namespace vmp::detail {
@@ -25,7 +25,7 @@ namespace vmp::detail {
             return false;
         }
 
-        if (auto target = mem::x64::branch_target(addr)) {
+        if (auto target = mem::insn::branch_target(addr)) {
             if (sections.contains_vmp(*target)) {
                 return true;
             }

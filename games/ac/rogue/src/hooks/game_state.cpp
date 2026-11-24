@@ -9,8 +9,8 @@
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
+#include "core/mem/insn.hpp"
 #include "core/mem/write.hpp"
-#include "core/mem/x64.hpp"
 
 #include "games/ac/rogue/structs.hpp"
 
@@ -98,7 +98,7 @@ namespace hooks {
         log::get()->trace("GameStateHook: installing");
 
         auto pattern_addr = addrs.game_state_global.value();
-        g_global_var_addr = mem::x64::read_rel(pattern_addr + 3);
+        g_global_var_addr = mem::insn::read_rel(pattern_addr + 3);
         auto gs_ptr       = mem::read<std::uintptr_t>(g_global_var_addr);
 
         log::get()->trace("GameStateHook: g_pGameState global at 0x{:X}, instance at 0x{:X}",

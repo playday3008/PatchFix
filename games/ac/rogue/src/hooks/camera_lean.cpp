@@ -12,8 +12,8 @@
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
+#include "core/mem/insn.hpp"
 #include "core/mem/write.hpp"
-#include "core/mem/x64.hpp"
 
 #include "games/ac/rogue/registry.hpp"
 
@@ -149,7 +149,7 @@ namespace hooks {
         g_qpc_frequency = freq.QuadPart;
 
         // mov rax, [rip+disp32] inside the function that applies the FX rotation.
-        g_camera_manager = mem::x64::read_rel(addrs.camera_manager_load.value() + 3);
+        g_camera_manager = mem::insn::read_rel(addrs.camera_manager_load.value() + 3);
         log::get()->trace("CameraLean: camera manager global at 0x{:X}", g_camera_manager);
 
         auto frame = mem::make_hook<SampleFrameTime>(addrs.camera_interpolate.value());

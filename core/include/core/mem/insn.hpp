@@ -7,7 +7,7 @@
 #include <optional>
 #include <utility>
 
-namespace mem::x64 {
+namespace mem::insn {
     inline constexpr std::uint8_t op_call_rel32  = 0xE8;
     inline constexpr std::uint8_t op_jmp_rel32   = 0xE9;
     inline constexpr std::uint8_t op_indirect    = 0xFF;
@@ -81,4 +81,4 @@ namespace mem::x64 {
     }
 
 #pragma clang diagnostic pop
-} // namespace mem::x64
+} // namespace mem::insn
