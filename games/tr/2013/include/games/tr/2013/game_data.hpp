@@ -24,6 +24,7 @@ namespace games {
             std::optional<std::uintptr_t> shake_finalize_fov_gate;
             std::optional<std::uintptr_t> shake_bone_rot_gate;
             std::optional<std::uintptr_t> shake_bone_fov_gate;
+            std::optional<std::uintptr_t> cinematic_aspect_call;
         };
 
         // clang-format off
@@ -33,6 +34,7 @@ namespace games {
             {.name="SHAKE_FINALIZE_FOV_GATE", .field=&ResolvedAddresses::shake_finalize_fov_gate, .offset=0x09, .bytes="8B CF E8 ? ? ? ? 84 C0 74 13 8B CF E8 ? ? ? ? D8 86 A0 00 00 00"},
             {.name="SHAKE_BONE_ROT_GATE",     .field=&ResolvedAddresses::shake_bone_rot_gate,     .offset=0x0A, .bytes="80 BF C0 01 00 00 00 8B 73 0C 74 ? 33 C9 8D 86 C8 00 00 00 F6 00 01"},
             {.name="SHAKE_BONE_FOV_GATE",     .field=&ResolvedAddresses::shake_bone_fov_gate,     .offset=0x07, .bytes="80 BF C0 01 00 00 00 74 ? 33 C9 8D 86 C8 00 00 00 F6 00 01 75 ? 41 05 C0 00 00 00 83 F9 10 7C F0 EB ? 8B 4B 0C 8B B7 40 01 00 00 E8"},
+            {.name="CINEMATIC_ASPECT_CALL",   .field=&ResolvedAddresses::cinematic_aspect_call,   .offset=0x0B, .bytes="8B 06 8B CE F2 0F 5A C0 8B 40 08 F3 0F 11 45 EC FF D0 F3 0F 10 45 EC F3 0F 11 45 EC D8 7D EC"},
         });
         // clang-format on
     };
