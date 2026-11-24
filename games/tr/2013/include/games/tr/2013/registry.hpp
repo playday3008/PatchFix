@@ -1,0 +1,13 @@
+#pragma once
+
+#include "core/hooks/registry/registry.hpp"
+
+#include "games/tr/2013/game_data.hpp"
+
+namespace games::tr::tr2013 {
+    using AllHooks = hooks::hook_list<>;
+
+    using TR2013Registry = hooks::Registry<AllHooks>;
+
+    auto registry() -> TR2013Registry &;
+} // namespace games::tr::tr2013
