@@ -4,7 +4,9 @@ add_executable(PatchFix.Tests
     test_topo_sort.cpp
     test_pattern_report.cpp
     test_pe_file.cpp
+    test_stack_walker.cpp
     test_trampoline_pool.cpp
+    "${CMAKE_SOURCE_DIR}/core/src/diagnostics/stack_walker.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/mem/trampoline_pool.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/win32/pe.cpp"
 )

@@ -78,23 +78,38 @@ jobs:
           /tmp/msvc-wine/install.sh ~/.msvc
 
       - name: Configure CMake
-        run: cmake --preset wine-x64
+        run: |
+          cmake --preset wine-x64
+          cmake --preset wine-x86
 
       - name: Build PCH
         run: |
           # Every target's PCH, so adding a game needs no change here.
-          PCH=$(ninja -C build -f build-Release.ninja -t targets all \
-                | grep -oP '^\S+/Release/cmake_pch\.cxx\.pch(?=:)')
-          test -n "$PCH"
-          cmake --build --preset wine-x64-release --target $PCH
+          for arch in x64 x86; do
+            dir="build/$arch"
+            PCH=$(ninja -C "$dir" -f build-Release.ninja -t targets all \
+                  | grep -oP '^\S+/Release/cmake_pch\.cxx\.pch(?=:)')
+            test -n "$PCH"
+            cmake --build --preset "wine-$arch-release" --target $PCH
+          done
 
-      - name: Filter compile DB to Release
-        run: python3 -c "import json,sys;j=[e for e in json.load(sys.stdin) if '/Release/' in e.get('command','')];assert j,'empty compile db after Release filter';json.dump(j,sys.stdout)" < build/compile_commands.json > build/cc_release.json && mv build/cc_release.json build/compile_commands.json
+      - name: Filter compile DBs to Release
+        run: |
+          for dir in build/x64 build/x86; do
+            python3 -c "import json,sys;j=[e for e in json.load(sys.stdin) if '/Release/' in e.get('command','')];assert j,'empty compile db after Release filter';json.dump(j,sys.stdout)" < "$dir/compile_commands.json" > "$dir/cc_release.json"
+            mv "$dir/cc_release.json" "$dir/compile_commands.json"
+          done
 
       - name: clang-tidy check
         run: |
-          find core/src games -type f -name '*.cpp' -not -path '*/tests/*' -print0 \
-            | xargs -0 -P "$(nproc)" -n 1 clang-tidy -p build --warnings-as-errors='*'
+          # Each architecture lints the sources its own build compiles: a game
+          # skipped by one arch has no compile flags there, and core's per-arch
+          # branches need checking on both.
+          for dir in build/x64 build/x86; do
+            jq -r '.[].file' "$dir/compile_commands.json" \
+              | grep -E "^$PWD/(core/src|games)/.*\\.cpp$" | grep -v '/tests/' | sort -u \
+              | xargs -P "$(nproc)" -n 1 clang-tidy -p "$dir" --warnings-as-errors='*'
+          done
 
   build-windows:
     name: Build (Windows)
@@ -113,7 +128,7 @@ jobs:
         run: cmake --build --preset windows-x64-release --config Release --target PatchFix.Tests
 
       - name: Run tests
-        run: ctest --test-dir build -C Release --output-on-failure --no-tests=error
+        run: ctest --test-dir build/x64 -C Release --output-on-failure --no-tests=error
 
       - name: Configure Debug
         run: cmake --preset windows-x64-debug
@@ -121,13 +136,33 @@ jobs:
       - name: Build Debug
         run: cmake --build --preset windows-x64-debug --config Debug
 
+      - name: Configure x86 Release
+        run: cmake --preset windows-x86-release
+
+      - name: Build x86 Release
+        run: cmake --build --preset windows-x86-release --config Release
+
+      - name: Build x86 tests
+        run: cmake --build --preset windows-x86-release --config Release --target PatchFix.Tests
+
+      - name: Run x86 tests
+        run: ctest --test-dir build/x86 -C Release --output-on-failure --no-tests=error
+
+      - name: Configure x86 Debug
+        run: cmake --preset windows-x86-debug
+
+      - name: Build x86 Debug
+        run: cmake --build --preset windows-x86-debug --config Debug
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: PatchFix-windows-${{ github.sha }}
           path: |
-            build/bin/Release/*.asi
-            build/bin/Debug/*.asi
+            build/x64/bin/Release/*.asi
+            build/x64/bin/Debug/*.asi
+            build/x86/bin/Release/*.asi
+            build/x86/bin/Debug/*.asi
             games/**/*.ini
           if-no-files-found: error
 
@@ -172,7 +207,9 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y wine
+          # Both arches, each pinned: asking for wine32:i386 alone lets apt
+          # satisfy `wine` with i386 packages and drop the amd64 wine64.
+          sudo apt-get install -y wine wine64:amd64 wine32:i386
 
       - name: Configure
         run: cmake --preset wine-x64
@@ -187,14 +224,31 @@ jobs:
         run: cmake --build --preset wine-x64-release --target PatchFix.Tests
 
       - name: Run tests
-        run: ctest --test-dir build -C Release --output-on-failure --no-tests=error
+        run: ctest --test-dir build/x64 -C Release --output-on-failure --no-tests=error
+
+      - name: Configure x86
+        run: cmake --preset wine-x86
+
+      - name: Build x86 Release
+        run: cmake --build --preset wine-x86-release
+
+      - name: Build x86 Debug
+        run: cmake --build --preset wine-x86-debug
+
+      - name: Build x86 tests
+        run: cmake --build --preset wine-x86-release --target PatchFix.Tests
+
+      - name: Run x86 tests
+        run: ctest --test-dir build/x86 -C Release --output-on-failure --no-tests=error
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: PatchFix-wine-${{ github.sha }}
           path: |
-            build/bin/Release/*.asi
-            build/bin/Debug/*.asi
+            build/x64/bin/Release/*.asi
+            build/x64/bin/Debug/*.asi
+            build/x86/bin/Release/*.asi
+            build/x86/bin/Debug/*.asi
             games/**/*.ini
           if-no-files-found: error

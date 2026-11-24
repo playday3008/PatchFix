@@ -10,6 +10,7 @@ ASI plugin framework that patches game binaries at runtime. All games are built 
 |------|--------|------|----------|
 | Assassin's Creed Rogue | `AC.Rogue.PatchFix.asi` | [README](games/ac/rogue/README.md) | [`ac-rogue/v*`](https://github.com/playday3008/AC.PatchFix/releases?q=ac-rogue) |
 | Assassin's Creed Syndicate | `AC.Syndicate.PatchFix.asi` | [README](games/ac/syndicate/README.md) | [`ac-syndicate/v*`](https://github.com/playday3008/AC.PatchFix/releases?q=ac-syndicate) |
+| Tomb Raider (2013) | `TR.2013.PatchFix.asi` | [README](games/tr/2013/README.md) | [`tr-2013/v*`](https://github.com/playday3008/AC.PatchFix/releases?q=tr-2013) |
 
 Releases up to `v3.3.0` bundled every game under one tag; later releases are tagged per game.
 
@@ -80,7 +81,7 @@ cmake --preset wine-x64
 cmake --build --preset wine-x64-release
 ```
 
-Output: one `.asi` per game in `build/bin/Release/`. To build a single game, pass its target, e.g. `cmake --build --preset wine-x64-release --target ac-rogue`.
+Output: one `.asi` per game in `build/<arch>/bin/Release/` (`x64` or `x86`, per the game's `patchfix_add_game(ARCH ...)`); x86 games build with the `wine-x86` / `windows-x86-*` presets. To build a single game, pass its target, e.g. `cmake --build --preset wine-x64-release --target ac-rogue`.
 
 ### Adding a game
 

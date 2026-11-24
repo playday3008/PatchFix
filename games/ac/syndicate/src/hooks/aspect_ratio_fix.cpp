@@ -11,7 +11,7 @@
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
-#include "core/mem/x64.hpp"
+#include "core/mem/insn.hpp"
 
 #include "games/ac/syndicate/registry.hpp"
 #include "games/ac/syndicate/structs.hpp"
@@ -98,7 +98,7 @@ namespace hooks {
         auto addr = addrs.aspect_recompute.value();
         log::get()->trace("Syndicate AspectRatioFixHook: aspect recompute tail at 0x{:X}", addr);
 
-        s_rcx_source = reinterpret_cast<std::uintptr_t *>(mem::x64::read_rel(addr + 3));
+        s_rcx_source = reinterpret_cast<std::uintptr_t *>(mem::insn::read_rel(addr + 3));
 
         auto hook_result = mem::make_hook<MirrorAspect>(addr, addr + k_load_rcx_size);
         if (!hook_result) {

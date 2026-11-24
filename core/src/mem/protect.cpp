@@ -63,7 +63,7 @@ namespace mem {
                 return std::nullopt;
             }
             auto          *base   = reinterpret_cast<void *>(addr);
-            auto           region = size;
+            SIZE_T         region = size;
             ULONG          old    = 0;
             const NTSTATUS status =
                 pNtProtectVirtualMemory(g_self_process.get(), &base, &region, new_protect, &old);

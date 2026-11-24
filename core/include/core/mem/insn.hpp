@@ -7,7 +7,7 @@
 #include <optional>
 #include <utility>
 
-namespace mem::x64 {
+namespace mem::insn {
     inline constexpr std::uint8_t op_call_rel32  = 0xE8;
     inline constexpr std::uint8_t op_jmp_rel32   = 0xE9;
     inline constexpr std::uint8_t op_indirect    = 0xFF;
@@ -58,8 +58,16 @@ namespace mem::x64 {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 auto modrm = *reinterpret_cast<const std::uint8_t *>(addr + 1);
                 if (modrm == modrm_call_rip || modrm == modrm_jmp_rip) {
-                    auto           ptr_addr = read_rel(addr + 2, 4);
-                    std::uintptr_t target   = 0;
+#ifdef _M_IX86
+                    // x86 encodes this form as an absolute [disp32], not RIP-relative.
+                    std::uint32_t disp = 0;
+                    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+                    std::memcpy(&disp, reinterpret_cast<const void *>(addr + 2), sizeof(disp));
+                    const std::uintptr_t ptr_addr = disp;
+#else
+                    auto ptr_addr = read_rel(addr + 2, 4);
+#endif
+                    std::uintptr_t target = 0;
                     // Reads code bytes at a raw address.
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                     std::memcpy(&target, reinterpret_cast<const void *>(ptr_addr), sizeof(target));
@@ -73,4 +81,4 @@ namespace mem::x64 {
     }
 
 #pragma clang diagnostic pop
-} // namespace mem::x64
+} // namespace mem::insn

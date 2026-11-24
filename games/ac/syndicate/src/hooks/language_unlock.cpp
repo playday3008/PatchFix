@@ -9,7 +9,7 @@
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
-#include "core/mem/x64.hpp"
+#include "core/mem/insn.hpp"
 
 #include "games/ac/syndicate/language.hpp"
 #include "games/ac/syndicate/registry.hpp"
@@ -93,13 +93,14 @@ namespace hooks {
                           lang_setup,
                           lang_bf_write);
 
-        s_menu_bf_global = reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 2));
+        s_menu_bf_global =
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 2));
         s_audio_bf_global =
-            reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 8));
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 8));
         s_eax_store_global =
-            reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 0x0E));
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 0x0E));
         s_subtitle_bf_global =
-            reinterpret_cast<std::uint32_t *>(mem::x64::read_rel(lang_bf_write + 0x18));
+            reinterpret_cast<std::uint32_t *>(mem::insn::read_rel(lang_bf_write + 0x18));
 
         log::get()->trace(
             "Syndicate LanguageUnlockHook: menu_bf=0x{:X} subtitle_bf=0x{:X} audio_bf=0x{:X}",
