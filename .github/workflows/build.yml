@@ -207,8 +207,9 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          # wine32 runs the x86 test binary; plain `wine` pulls only wine64.
-          sudo apt-get install -y wine wine32:i386
+          # Both arches, each pinned: asking for wine32:i386 alone lets apt
+          # satisfy `wine` with i386 packages and drop the amd64 wine64.
+          sudo apt-get install -y wine wine64:amd64 wine32:i386
 
       - name: Configure
         run: cmake --preset wine-x64
