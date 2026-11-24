@@ -2,3 +2,6 @@ InheritParentConfig: true
 Checks: >
   -cppcoreguidelines-pro-type-const-cast,
   -cppcoreguidelines-pro-type-reinterpret-cast,
+CheckOptions:
+  # stack_walker.cpp lists its dbghelp exports once as an X-macro.
+  cppcoreguidelines-macro-usage.AllowedRegexp: '^DBGHELP_'

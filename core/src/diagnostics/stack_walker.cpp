@@ -17,6 +17,53 @@ namespace diagnostics {
 #pragma clang diagnostic ignored "-Wglobal-constructors"
         std::mutex g_dbghelp_mutex;
 #pragma clang diagnostic pop
+
+        // Every dbghelp export used here, as X(name). Each becomes a `p<name>`
+        // member typed from the SDK declaration and resolved by that name.
+#ifdef _M_IX86
+#    define DBGHELP_EXPORTS(X)      \
+        X(SymInitialize)            \
+        X(SymFromAddr)              \
+        X(StackWalk64)              \
+        X(SymFunctionTableAccess64) \
+        X(SymGetModuleBase64)
+#else
+#    define DBGHELP_EXPORTS(X) \
+        X(SymInitialize)       \
+        X(SymFromAddr)
+#endif
+
+        struct DbgHelp {
+#define DBGHELP_MEMBER(name) decltype(name) *p##name {};
+            DBGHELP_EXPORTS(DBGHELP_MEMBER)
+#undef DBGHELP_MEMBER
+            bool initialized {};
+        };
+
+        // Loaded on first use rather than linked, so a missing or broken dbghelp
+        // only costs symbol names. Members stay null if dbghelp or an export is
+        // absent; dbghelp ships with every Windows, so that is not retried.
+        auto dbghelp() -> const DbgHelp & {
+            static const DbgHelp api = [] -> DbgHelp {
+                DbgHelp d {};
+                auto   *h = LoadLibraryA("dbghelp.dll");
+                if (h == nullptr) {
+                    return d;
+                }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-strict"
+#define DBGHELP_RESOLVE(name) \
+    d.p##name = reinterpret_cast<decltype(name) *>(GetProcAddress(h, #name));
+                DBGHELP_EXPORTS(DBGHELP_RESOLVE)
+#undef DBGHELP_RESOLVE
+#pragma clang diagnostic pop
+                d.initialized = d.pSymInitialize != nullptr &&
+                                d.pSymInitialize(GetCurrentProcess(), nullptr, TRUE) != FALSE;
+                return d;
+            }();
+            return api;
+        }
+#undef DBGHELP_EXPORTS
     } // namespace
 
     auto capture_stack(const CONTEXT *ctx, std::span<StackFrame> buf) -> std::span<StackFrame> {
@@ -28,10 +75,39 @@ namespace diagnostics {
 
         auto out = buf.begin();
 #ifdef _M_IX86
-        // ponytail: x86 has no unwind tables, so only the faulting frame is recorded.
-        // Walk further with StackWalk64(IMAGE_FILE_MACHINE_I386) when an x86 crash needs it.
-        if (out != buf.end() && local_ctx.Eip != 0) {
-            out->address = local_ctx.Eip;
+        // x86 has no unwind tables. StackWalk64 follows the EBP chain and uses
+        // FPO records where symbols provide them, so a frame-pointer-omitting
+        // function without symbols can end the walk early.
+        const auto                        &api = dbghelp();
+        const std::unique_lock<std::mutex> lock(g_dbghelp_mutex, std::try_to_lock);
+        if (!api.initialized || api.pStackWalk64 == nullptr || !lock.owns_lock()) {
+            if (out != buf.end() && local_ctx.Eip != 0) {
+                out->address = local_ctx.Eip;
+                ++out;
+            }
+            return buf.first(static_cast<std::size_t>(out - buf.begin()));
+        }
+
+        STACKFRAME64 frame {};
+        frame.AddrPC.Offset    = local_ctx.Eip;
+        frame.AddrPC.Mode      = AddrModeFlat;
+        frame.AddrFrame.Offset = local_ctx.Ebp;
+        frame.AddrFrame.Mode   = AddrModeFlat;
+        frame.AddrStack.Offset = local_ctx.Esp;
+        frame.AddrStack.Mode   = AddrModeFlat;
+        while (out != buf.end() && api.pStackWalk64(IMAGE_FILE_MACHINE_I386,
+                                                    GetCurrentProcess(),
+                                                    GetCurrentThread(),
+                                                    &frame,
+                                                    &local_ctx,
+                                                    nullptr,
+                                                    api.pSymFunctionTableAccess64,
+                                                    api.pSymGetModuleBase64,
+                                                    nullptr) != FALSE) {
+            if (frame.AddrPC.Offset == 0) {
+                break;
+            }
+            out->address = static_cast<std::uintptr_t>(frame.AddrPC.Offset);
             ++out;
         }
 #else
@@ -93,27 +169,8 @@ namespace diagnostics {
     }
 
     void resolve_symbols(std::span<StackFrame> frames) {
-        // Null-forever if dbghelp is absent on first call; acceptable (always present on Windows).
-        static auto *h_dbghelp = LoadLibraryA("dbghelp.dll");
-        if (h_dbghelp == nullptr) {
-            return;
-        }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-function-type-strict"
-        static auto *pSymInitialize =
-            reinterpret_cast<decltype(SymInitialize) *>(GetProcAddress(h_dbghelp, "SymInitialize"));
-        static auto *pSymFromAddr =
-            reinterpret_cast<decltype(SymFromAddr) *>(GetProcAddress(h_dbghelp, "SymFromAddr"));
-#pragma clang diagnostic pop
-
-        if (pSymInitialize == nullptr || pSymFromAddr == nullptr) {
-            return;
-        }
-
-        static const bool initialized =
-            (pSymInitialize(GetCurrentProcess(), nullptr, TRUE) != FALSE);
-        if (!initialized) {
+        const auto &api = dbghelp();
+        if (!api.initialized || api.pSymFromAddr == nullptr) {
             return;
         }
 
@@ -137,7 +194,8 @@ namespace diagnostics {
 
         for (auto &frame : frames) {
             DWORD64 displacement = 0;
-            if (pSymFromAddr(GetCurrentProcess(), frame.address, &displacement, symbol) != FALSE) {
+            if (api.pSymFromAddr(GetCurrentProcess(), frame.address, &displacement, symbol) !=
+                FALSE) {
                 // SYMBOL_INFO::Name is declared CHAR[1] but is a flexible array member; the
                 // real storage is the k_max_sym_len tail of buf. Decay it explicitly.
                 const auto *name     = static_cast<const char *>(symbol->Name);
