@@ -16,6 +16,7 @@ add_library(PatchFix.Core OBJECT
     src/diagnostics/minidump.cpp
     src/diagnostics/address_registry.cpp
     src/diagnostics/crash_handler.cpp
+    src/diagnostics/unhandled_filter.cpp
     src/diagnostics/seh_guard.cpp
     src/diagnostics/crash_logger.cpp
     src/diagnostics/patch_registry.cpp
