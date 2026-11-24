@@ -2,7 +2,9 @@
 
 Tomb Raider (2013) plugin of [PatchFix](../../../README.md). See the main README for diagnostics and building.
 
-Work in progress: the plugin loads and logs, but no fixes ship yet. The target is the HUD elements that end up partly off-screen on the current PC build (Patch 838, Steam build 9573671), which build `743.0` does not have.
+## Features
+
+- **HUD relayout** - fixes HUD elements drawn partly off-screen or stuck in the top-left corner on the current PC build (Patch 838, Steam build 9573671): interaction prompts, collectible counters, notifications, the salvage counter. Since Patch 829 each HUD movie applies its screen layout only on its first two frames, so anything created before the layout settles keeps a wrong placement. The fix applies it every frame again, as build `743.0` does.
 
 ## Installation
 
