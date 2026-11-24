@@ -144,6 +144,7 @@ void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &regi
     diagnostics::init_log();
     log::get()->info("{} v{} initializing for {}", log_name, plugin::version::string, exe_name);
 
+#ifdef _WIN64
     if (const auto &pool = mem::trampoline_pool::main_image_reservation()) {
         log::get()->info("Trampoline pool: {} KiB at 0x{:X}",
                          mem::trampoline_pool::k_size / 1024,
@@ -152,6 +153,7 @@ void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &regi
         log::get()->warn("Trampoline pool unavailable ({}); hooks at RIP-relative sites may fail",
                          pool.error());
     }
+#endif
 
     auto ini_path = dll_dir / (log_name + ".ini");
     init_game<G>(registry, ini_path, stop);

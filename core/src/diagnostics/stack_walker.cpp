@@ -27,6 +27,14 @@ namespace diagnostics {
 #pragma clang diagnostic pop
 
         auto out = buf.begin();
+#ifdef _M_IX86
+        // ponytail: x86 has no unwind tables, so only the faulting frame is recorded.
+        // Walk further with StackWalk64(IMAGE_FILE_MACHINE_I386) when an x86 crash needs it.
+        if (out != buf.end() && local_ctx.Eip != 0) {
+            out->address = local_ctx.Eip;
+            ++out;
+        }
+#else
         while (out != buf.end()) {
             if (local_ctx.Rip == 0) {
                 break;
@@ -52,6 +60,7 @@ namespace diagnostics {
                              &establisher_frame,
                              nullptr);
         }
+#endif
         return buf.first(static_cast<std::size_t>(out - buf.begin()));
     }
 

@@ -40,9 +40,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
         DisableThreadLibraryCalls(hModule);
         diagnostics::register_plugin_module(hModule);
         diagnostics::install_veh();
+#ifdef _WIN64
         // Before the init thread: the game claims memory near its image while
         // init waits on VMProtect, leaving no room for trampolines by hook time.
+        // x86 rel32 reaches the whole address space, so it needs no reservation.
         mem::trampoline_pool::reserve_near_main_image();
+#endif
         g_init_thread = std::make_unique<std::jthread>(
             [hModule](const std::stop_token &stop) -> void { game_init(hModule, stop); });
     } else if (reason == DLL_PROCESS_DETACH) {

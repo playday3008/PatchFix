@@ -42,6 +42,19 @@ namespace diagnostics {
         }
 
         void log_registers(const CONTEXT *ctx) {
+#ifdef _M_IX86
+            log().critical("  EAX={:08X}  EBX={:08X}  ECX={:08X}  EDX={:08X}",
+                           ctx->Eax,
+                           ctx->Ebx,
+                           ctx->Ecx,
+                           ctx->Edx);
+            log().critical("  ESI={:08X}  EDI={:08X}  EBP={:08X}  ESP={:08X}",
+                           ctx->Esi,
+                           ctx->Edi,
+                           ctx->Ebp,
+                           ctx->Esp);
+            log().critical("  EIP={:08X}  EFLAGS={:08X}", ctx->Eip, ctx->EFlags);
+#else
             log().critical("  RAX={:016X}  RBX={:016X}  RCX={:016X}  RDX={:016X}",
                            ctx->Rax,
                            ctx->Rbx,
@@ -63,6 +76,7 @@ namespace diagnostics {
                            ctx->R14,
                            ctx->R15);
             log().critical("  RIP={:016X}  RFLAGS={:016X}", ctx->Rip, ctx->EFlags);
+#endif
         }
 
         void log_stack_trace(std::span<const StackFrame> frames) {
@@ -266,12 +280,15 @@ namespace diagnostics {
                             fault_addr);
         }
 
-        logger.critical("VEH: RIP={:016X} RSP={:016X} RBP={:016X}", ctx->Rip, ctx->Rsp, ctx->Rbp);
+        logger.critical("VEH: IP={:016X} SP={:016X} BP={:016X}",
+                        context_ip(ctx),
+                        context_sp(ctx),
+                        context_bp(ctx));
         logger.flush();
     }
 
     void log_patch_attribution(EXCEPTION_POINTERS *ep) {
-        auto rip = static_cast<std::uintptr_t>(ep->ContextRecord->Rip);
+        auto rip = context_ip(ep->ContextRecord);
 
         if (const auto patch = patch_registry::find_patch(rip)) {
             log().critical("VEH: >>> Address patched by hook '{}' ({}, {} bytes at 0x{:X})",

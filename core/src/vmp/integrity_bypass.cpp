@@ -51,7 +51,7 @@ namespace vmp {
                 g_blocked_count.fetch_add(1, std::memory_order_relaxed);
             }
             return g_create_thread_hook
-                .call<HANDLE>(attrs, stack_size, start, param, flags, thread_id);
+                .stdcall<HANDLE>(attrs, stack_size, start, param, flags, thread_id);
         }
     } // namespace
 #pragma clang diagnostic pop

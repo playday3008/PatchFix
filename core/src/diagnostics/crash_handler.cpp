@@ -42,7 +42,7 @@ namespace diagnostics {
             }
             const VehReentryGuard guard;
 
-            auto rip = static_cast<std::uintptr_t>(ep->ContextRecord->Rip);
+            auto rip = context_ip(ep->ContextRecord);
 
             if (is_plugin_address(rip)) {
                 log_crash_report_lightweight(ep);

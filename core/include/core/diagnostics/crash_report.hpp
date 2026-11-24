@@ -7,6 +7,29 @@
 #include <Windows.h>
 
 namespace diagnostics {
+    /// Instruction, stack and frame pointer of a CONTEXT, for either architecture.
+    [[nodiscard]] inline auto context_ip(const CONTEXT *ctx) -> std::uintptr_t {
+#ifdef _M_IX86
+        return static_cast<std::uintptr_t>(ctx->Eip);
+#else
+        return static_cast<std::uintptr_t>(ctx->Rip);
+#endif
+    }
+    [[nodiscard]] inline auto context_sp(const CONTEXT *ctx) -> std::uintptr_t {
+#ifdef _M_IX86
+        return static_cast<std::uintptr_t>(ctx->Esp);
+#else
+        return static_cast<std::uintptr_t>(ctx->Rsp);
+#endif
+    }
+    [[nodiscard]] inline auto context_bp(const CONTEXT *ctx) -> std::uintptr_t {
+#ifdef _M_IX86
+        return static_cast<std::uintptr_t>(ctx->Ebp);
+#else
+        return static_cast<std::uintptr_t>(ctx->Rbp);
+#endif
+    }
+
     auto exception_code_name(std::uint32_t code) -> std::string_view;
     auto is_hardware_exception(std::uint32_t code) -> bool;
 
