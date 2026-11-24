@@ -19,6 +19,23 @@
             }
         },
         {
+            "name": "wine-x86",
+            "displayName": "Wine x86",
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/msvc-wine-clang-cl-x86.cmake",
+            "binaryDir": "${sourceDir}/build/x86",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release;Debug",
+                "PATCHFIX_BUILD_TESTS": "ON",
+                "PATCHFIX_WERROR": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
             "name": "windows-x64-release",
             "displayName": "Windows x64 Release",
             "generator": "Visual Studio 18 2026",
@@ -53,6 +70,42 @@
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             }
+        },
+        {
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "Win32",
+            "toolset": "ClangCL",
+            "binaryDir": "${sourceDir}/build/x86",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "PATCHFIX_BUILD_TESTS": "ON",
+                "PATCHFIX_WERROR": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-x86-debug",
+            "displayName": "Windows x86 Debug",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "Win32",
+            "toolset": "ClangCL",
+            "binaryDir": "${sourceDir}/build/x86",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "PATCHFIX_BUILD_TESTS": "ON",
+                "PATCHFIX_WERROR": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
         }
     ],
     "buildPresets": [
@@ -73,6 +126,24 @@
         {
             "name": "windows-x64-debug",
             "configurePreset": "windows-x64-debug"
+        },
+        {
+            "name": "wine-x86-release",
+            "configurePreset": "wine-x86",
+            "configuration": "Release"
+        },
+        {
+            "name": "wine-x86-debug",
+            "configurePreset": "wine-x86",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-x86-release",
+            "configurePreset": "windows-x86-release"
+        },
+        {
+            "name": "windows-x86-debug",
+            "configurePreset": "windows-x86-debug"
         }
     ]
 }

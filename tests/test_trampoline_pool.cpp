@@ -87,6 +87,14 @@ namespace {
         auto operator=(NearMemoryHog &&) -> NearMemoryHog &      = delete;
     };
 
+    // The pool exists for x64 rel32 reach; x86 rel32 covers the whole address
+    // space, and the hog below would exhaust all of it.
+    void skip_unless_x64() {
+#ifndef _WIN64
+        SKIP("trampoline pool is x64-only");
+#endif
+    }
+
     // mov eax, [rip+0]; ret; then padding so the hook has room to overwrite.
     alignas(16) std::array<std::uint8_t, 23> g_rip_relative_target {
         0x8B, 0x05, 0x00, 0x00, 0x00, 0x00, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
@@ -95,6 +103,7 @@ namespace {
 } // namespace
 
 TEST_CASE("pool is within rel32 reach of both ends of the range", "[trampoline_pool]") {
+    skip_unless_x64();
     const auto image = test_image();
 
     auto pool = mem::trampoline_pool::reserve(image.lo, image.hi);
@@ -106,6 +115,7 @@ TEST_CASE("pool is within rel32 reach of both ends of the range", "[trampoline_p
 
 TEST_CASE("mid hook on a RIP-relative instruction installs after near memory is exhausted",
           "[trampoline_pool]") {
+    skip_unless_x64();
     const auto image = test_image();
     REQUIRE(mem::trampoline_pool::reserve(image.lo, image.hi));
 
