@@ -25,6 +25,8 @@ namespace games {
             std::optional<std::uintptr_t> shake_bone_rot_gate;
             std::optional<std::uintptr_t> shake_bone_fov_gate;
             std::optional<std::uintptr_t> cinematic_aspect_call;
+            std::optional<std::uintptr_t> vo_menu_apply;
+            std::optional<std::uintptr_t> settings_getter_call;
         };
 
         // clang-format off
@@ -35,6 +37,9 @@ namespace games {
             {.name="SHAKE_BONE_ROT_GATE",     .field=&ResolvedAddresses::shake_bone_rot_gate,     .offset=0x0A, .bytes="80 BF C0 01 00 00 00 8B 73 0C 74 ? 33 C9 8D 86 C8 00 00 00 F6 00 01"},
             {.name="SHAKE_BONE_FOV_GATE",     .field=&ResolvedAddresses::shake_bone_fov_gate,     .offset=0x07, .bytes="80 BF C0 01 00 00 00 74 ? 33 C9 8D 86 C8 00 00 00 F6 00 01 75 ? 41 05 C0 00 00 00 83 F9 10 7C F0 EB ? 8B 4B 0C 8B B7 40 01 00 00 E8"},
             {.name="CINEMATIC_ASPECT_CALL",   .field=&ResolvedAddresses::cinematic_aspect_call,   .offset=0x0B, .bytes="8B 06 8B CE F2 0F 5A C0 8B 40 08 F3 0F 11 45 EC FF D0 F3 0F 10 45 EC F3 0F 11 45 EC D8 7D EC"},
+            // Epic (and possibly GOG) builds only: the Steam build takes its voice language from the Steam client and has no VOLanguage setting.
+            {.name="VO_MENU_APPLY",           .field=&ResolvedAddresses::vo_menu_apply,           .offset=0x0F, .bytes="8B 9E F0 14 00 00 E8 ? ? ? ? 3B D8 74 ? 8B 86 EC 14 00 00 50 53 50 E8 ? ? ? ? 0F B7 86 F0 14 00 00"},
+            {.name="SETTINGS_GETTER_CALL",    .field=&ResolvedAddresses::settings_getter_call,    .offset=0x07, .bytes="C7 45 FC FF FF FF FF E8 ? ? ? ? 8D 4D FC 51 8D 4D F8 8B 10 51 6A 00 68 ? ? ? ? 8B C8 FF 52 28 66 8B 45 F8"},
         });
         // clang-format on
     };
