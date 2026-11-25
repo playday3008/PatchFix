@@ -9,6 +9,7 @@
 #include "core/diagnostics/address_registry.hpp"
 #include "core/diagnostics/crash_handler.hpp"
 #include "core/diagnostics/crash_journal.hpp"
+#include "core/diagnostics/unhandled_filter.hpp"
 #include "core/mem/trampoline_pool.hpp"
 #include "core/vmp/integrity_bypass.hpp"
 #include "core/win32/timer_resolution.hpp"
@@ -78,6 +79,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
         win32::restore_timer_resolution();
         diagnostics::crash_journal::write_session_clean();
         diagnostics::crash_journal::close();
+        diagnostics::uninstall_unhandled_filter();
         diagnostics::uninstall_veh();
         log::shutdown();
     }

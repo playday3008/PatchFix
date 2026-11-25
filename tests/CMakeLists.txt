@@ -6,7 +6,9 @@ add_executable(PatchFix.Tests
     test_pe_file.cpp
     test_stack_walker.cpp
     test_trampoline_pool.cpp
+    test_unhandled_filter.cpp
     "${CMAKE_SOURCE_DIR}/core/src/diagnostics/stack_walker.cpp"
+    "${CMAKE_SOURCE_DIR}/core/src/diagnostics/unhandled_filter.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/mem/trampoline_pool.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/win32/pe.cpp"
 )

@@ -15,6 +15,9 @@
 #include "core/config/file_watcher.hpp"
 #include "core/diagnostics/crash_journal.hpp"
 #include "core/diagnostics/crash_logger.hpp"
+#include "core/diagnostics/crash_report.hpp"
+#include "core/diagnostics/minidump.hpp"
+#include "core/diagnostics/unhandled_filter.hpp"
 #include "core/mem/protect.hpp"
 #include "core/mem/trampoline_pool.hpp"
 #include "core/patterns/signatures.hpp"
@@ -143,6 +146,16 @@ void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &regi
     log::init((dll_dir / (log_name + ".log")).string());
     diagnostics::init_log();
     log::get()->info("{} v{} initializing for {}", log_name, plugin::version::string, exe_name);
+
+    if (diagnostics::install_unhandled_filter([](EXCEPTION_POINTERS *ep) -> void {
+            diagnostics::log_crash_report(ep, "unhandled exception");
+            diagnostics::write_minidump(ep);
+        })) {
+        log::get()->trace("Unhandled exception filter installed");
+    } else {
+        log::get()->warn("Unhandled exception filter: hook failed, crashes in game code get no "
+                         "full report");
+    }
 
 #ifdef _WIN64
     if (const auto &pool = mem::trampoline_pool::main_image_reservation()) {
