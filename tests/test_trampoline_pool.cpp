@@ -61,7 +61,9 @@ namespace {
                     continue;
                 }
                 const auto region_lo = reinterpret_cast<std::uintptr_t>(mbi.BaseAddress);
-                const auto region_hi = region_lo + mbi.RegionSize;
+                // Wine backs every reserved page with bookkeeping, so the free
+                // region past the top of the reach must not be reserved whole.
+                const auto region_hi = std::min<std::uintptr_t>(region_lo + mbi.RegionSize, end);
                 const auto aligned   = (region_lo + k_granularity - 1) & ~(k_granularity - 1);
                 if (aligned >= region_hi) {
                     continue;
