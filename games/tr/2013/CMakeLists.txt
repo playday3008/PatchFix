@@ -1,6 +1,6 @@
 project(TR.2013
     LANGUAGES CXX
-    VERSION 0.2.0
+    VERSION 0.2.1
 )
 
 patchfix_add_game(ARCH x86)
