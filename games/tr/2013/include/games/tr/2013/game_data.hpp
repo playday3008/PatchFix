@@ -56,7 +56,7 @@ namespace games {
             {.name="VO_MENU_ROW_LOOKUP",      .field=&ResolvedAddresses::vo_menu_row_lookup,      .offset=0x06, .bytes="8B 97 F4 14 00 00 89 45 FC 8B 0A 3B CA 74 ? 8B 41 0C 3B 45 08 75 ? 83 FE 1D 74 ? 3B 45 FC 75 ? 83 FE 1E 74"},
             // Steam build only: Steam Cloud save files.
             {.name="CLOUD_INFLATE_RESULT",    .field=&ResolvedAddresses::cloud_inflate_result,    .offset=0x00, .bytes="83 C4 10 85 C0 75 ? 8B 47 54 83 F8 64 7C ? 3D C9 00 00 00 74 ? FF 77 50 8B 47 4C 03 C6 50 FF 77 48 E8"},
-            // Epic (and possibly GOG) builds only: local save files.
+            // Non-Steam builds only (checked on Epic): local save files.
             {.name="SAVE_INFLATE_RESULT",     .field=&ResolvedAddresses::save_inflate_result,     .offset=0x10, .bytes="FF 75 F8 8D 45 F4 56 50 FF 77 54 E8 ? ? ? ? 83 C4 10 85 C0 74 02 32 DB"},
         });
         // clang-format on

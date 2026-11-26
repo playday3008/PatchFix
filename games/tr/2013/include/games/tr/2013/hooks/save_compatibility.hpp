@@ -13,24 +13,27 @@
 #include "games/tr/2013/game_data.hpp"
 
 namespace games::tr::tr2013 {
-    struct LoadEpicSavesHook {};
+    struct SaveCompatibilityHook {};
 } // namespace games::tr::tr2013
 
 namespace hooks {
     template<>
-    struct HookTraits<games::tr::tr2013::LoadEpicSavesHook> {
+    struct HookTraits<games::tr::tr2013::SaveCompatibilityHook> {
         using Addrs        = games::game_data<games::tr::TR2013>::ResolvedAddresses;
         using PatternField = std::optional<std::uintptr_t> Addrs::*;
 
-        static constexpr std::string_view name = "LoadEpicSaves";
+        static constexpr std::string_view name = "SaveCompatibility";
 
         using hard_deps = dep_list<>;
         using soft_deps = dep_list<>;
 
-        static constexpr auto required_patterns = std::array<PatternField, 1> {
+        // Each build matches only its own half: the Steam build the Steam Cloud
+        // read, non-Steam builds the local-save read.
+        static constexpr auto required_patterns = std::array<PatternField, 0> {};
+        static constexpr auto optional_patterns = std::array<PatternField, 2> {
             &Addrs::cloud_inflate_result,
+            &Addrs::save_inflate_result,
         };
-        static constexpr auto optional_patterns = std::array<PatternField, 0> {};
 
         using Config = empty_config;
 
