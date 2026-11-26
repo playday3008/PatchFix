@@ -16,9 +16,10 @@ namespace hooks {
     namespace {
         using Tag = games::tr::tr2013::VoiceLanguageHook;
 
-        // The Epic build reads its voice language from the VOLanguage setting at
-        // startup and again when Display Options are applied, but the options
-        // menu only changes it in memory and in the profile. A changed voice
+        // Non-Steam builds (checked on Epic) read the voice language from the
+        // VOLanguage setting at startup and again when Display Options are
+        // applied, but the options menu only changes it in memory and in the
+        // profile. A changed voice
         // language therefore reverts on the next launch, or as soon as Display
         // Options are applied. Writing it through the game's settings object, the
         // same one those reads use, keeps its cache and the registry in step.
