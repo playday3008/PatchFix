@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include <new>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -19,15 +20,14 @@ namespace hooks {
     namespace {
         using Tag = games::tr::tr2013::LoadSteamSavesHook;
 
-        // A Steam save is the game state followed by a 40-byte copy of its slot
-        // info, compressed as one zlib stream. The Epic build inflates saves into
-        // a buffer of exactly the game state's size, so a Steam save fills it and
-        // zlib returns Z_BUF_ERROR before it reaches the stream's checksum. To
-        // accept such a save without skipping that check, it is inflated again
-        // into a buffer with room for the slot info, and taken only if that
-        // succeeds, checksum included, at exactly the Steam size. The Epic build
-        // reads the slot info from the start of the game state, so the trailing
-        // copy is dropped.
+        // A Steam save is the game state followed by 40 bytes of slot info (date,
+        // progress) stored separately, compressed as one zlib stream. The Epic build inflates saves
+        // into a buffer of exactly the game state's size, so a Steam save fills it and zlib returns
+        // Z_BUF_ERROR before it reaches the stream's checksum. To accept such a save without
+        // skipping that check, it is inflated again into a buffer with room for the slot info, and
+        // taken only if that succeeds, checksum included, at exactly the Steam size. The Epic build
+        // takes the slot info from the start of the game state, which usually
+        // matches the trailing one, so the trailing slot info is dropped.
         constexpr int           k_z_ok           = 0;
         constexpr auto          k_z_buf_error    = static_cast<std::uintptr_t>(-5);
         constexpr std::uint32_t k_slot_info_size = 40;
@@ -69,10 +69,19 @@ namespace hooks {
                 const auto  src_len   = static_cast<std::uint32_t>(stack_arg(regs.esp, 3));
                 const auto  dest_size = *dest_len;
 
-                std::vector<std::byte> scratch(std::size_t {dest_size} + k_slot_info_size);
-                auto                   scratch_len = static_cast<std::uint32_t>(scratch.size());
-                const auto result = g_uncompress(scratch.data(), &scratch_len, src, src_len);
-                if (result != k_z_ok || scratch_len != scratch.size()) {
+                const auto scratch_size = dest_size + k_slot_info_size;
+                // An exception cannot unwind through the hook stub, so a failed
+                // allocation is caught here and leaves the stock rejection.
+                std::vector<std::byte> scratch;
+                try {
+                    scratch.resize(scratch_size);
+                } catch (const std::bad_alloc &) {
+                    log::get()->warn("TR2013 LoadSteamSavesHook: out of memory, save rejected");
+                    return;
+                }
+                auto       scratch_len = scratch_size;
+                const auto result      = g_uncompress(scratch.data(), &scratch_len, src, src_len);
+                if (result != k_z_ok || scratch_len != scratch_size) {
                     log::get()->warn("TR2013 LoadSteamSavesHook: save rejected (zlib {}, {} bytes)",
                                      result,
                                      scratch_len);
