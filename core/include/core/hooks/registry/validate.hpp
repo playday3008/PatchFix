@@ -1,27 +1,11 @@
 #pragma once
 
-#include <concepts>
-#include <string_view>
 #include <type_traits>
-#include <utility>
-
-#include <mini/ini.h>
 
 #include "core/hooks/registry/dep_list.hpp"
 #include "core/hooks/registry/hook_traits.hpp"
 
 namespace hooks {
-    template<typename Tag>
-    concept ValidHookTraits = requires(mINI::INIStructure &ini) {
-        { HookTraits<Tag>::name } -> std::convertible_to<std::string_view>;
-        typename HookTraits<Tag>::hard_deps;
-        typename HookTraits<Tag>::soft_deps;
-        { HookTraits<Tag>::required_patterns };
-        { HookTraits<Tag>::optional_patterns };
-        typename HookTraits<Tag>::Config;
-        { std::declval<typename HookTraits<Tag>::Config &>().load_all(ini) } -> std::same_as<void>;
-    };
-
     template<typename Tag, typename List>
     constexpr bool is_in_list = false;
 
@@ -56,8 +40,6 @@ namespace hooks {
             }
         }
 
-        static_assert(ValidHookTraits<Tag>,
-                      "HookTraits<Tag> does not satisfy the required interface");
         static_assert(check_all(typename HookTraits<Tag>::hard_deps {}),
                       "Hard dependency references a hook not in AllHooks");
         static_assert(check_all(typename HookTraits<Tag>::soft_deps {}),

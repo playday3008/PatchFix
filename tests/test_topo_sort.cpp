@@ -43,12 +43,17 @@ namespace hooks {
 } // namespace hooks
 
 namespace {
-    using TestHookList = hooks::hook_list<MockA, MockB, MockC>;
+    // The mocks carry only what topo sort reads, so they cannot go in a
+    // hooks::hook_list, which requires complete hook traits.
+    template<typename... Ts>
+    struct mock_list {};
+
+    using TestHookList = mock_list<MockA, MockB, MockC>;
 
     constexpr std::size_t N = 3;
 
     template<typename Tag, typename... Tags>
-    constexpr auto hook_idx(hooks::hook_list<Tags...> /*unused*/) -> std::size_t {
+    constexpr auto hook_idx(mock_list<Tags...> /*unused*/) -> std::size_t {
         constexpr std::array matches = {std::is_same_v<Tag, Tags>...};
         for (std::size_t i = 0; i < sizeof...(Tags); ++i) {
             if (matches.at(i)) {
