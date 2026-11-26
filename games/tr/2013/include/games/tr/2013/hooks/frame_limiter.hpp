@@ -18,6 +18,24 @@
 namespace games::tr::tr2013 {
     struct FrameLimiterHook {};
 
+    // Caps below this turn the limiter off.
+    inline constexpr float k_min_cap = 1.0F;
+
+    // The game's timestep clamps each frame delta at 66666 us, so a frame longer
+    // than 1/15 s runs the game in slow motion. Caps from k_min_cap up to this
+    // value are raised to it.
+    inline constexpr float k_floor_cap = 15.0F;
+
+    // Clock ticks per frame for `cap` frames per second; 0 means off.
+    [[nodiscard]] inline auto frame_period(float cap, std::int64_t ticks_per_second)
+        -> std::int64_t {
+        if (!(cap >= k_min_cap)) {
+            return 0;
+        }
+        return static_cast<std::int64_t>(static_cast<double>(ticks_per_second) /
+                                         std::max(cap, k_floor_cap));
+    }
+
     // Schedules frame starts one period apart, in clock ticks. A frame that
     // arrives late starts at once without shifting the schedule, so the average
     // rate holds; one that is a full period or more behind (a load, an alt-tab)

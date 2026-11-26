@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "games/tr/2013/hooks/frame_limiter.hpp"
@@ -46,4 +48,26 @@ TEST_CASE("FramePacer starts fresh after being turned off", "[tr2013][limiter]")
     CHECK(pacer.due(50, 0) == 0);
     CHECK(pacer.due(60, 100) == 0);
     CHECK(pacer.due(100, 100) == 60);
+}
+
+TEST_CASE("frame_period is off for caps below 1 and for NaN", "[tr2013][limiter]") {
+    using games::tr::tr2013::frame_period;
+    CHECK(frame_period(0.0F, 10'000'000) == 0);
+    CHECK(frame_period(0.5F, 10'000'000) == 0);
+    CHECK(frame_period(-60.0F, 10'000'000) == 0);
+    CHECK(frame_period(std::numeric_limits<float>::quiet_NaN(), 10'000'000) == 0);
+}
+
+TEST_CASE("frame_period raises caps below 15 to 15", "[tr2013][limiter]") {
+    using games::tr::tr2013::frame_period;
+    CHECK(frame_period(1.0F, 15'000'000) == 1'000'000);
+    CHECK(frame_period(14.9F, 15'000'000) == 1'000'000);
+    CHECK(frame_period(15.0F, 15'000'000) == 1'000'000);
+}
+
+TEST_CASE("frame_period divides the clock rate by the cap", "[tr2013][limiter]") {
+    using games::tr::tr2013::frame_period;
+    CHECK(frame_period(60.0F, 10'000'000) == 166'666);
+    CHECK(frame_period(144.0F, 10'000'000) == 69'444);
+    CHECK(frame_period(std::numeric_limits<float>::infinity(), 10'000'000) == 0);
 }

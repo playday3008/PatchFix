@@ -3,12 +3,15 @@ add_executable(PatchFix.Tests
     test_ini_field.cpp
     test_topo_sort.cpp
     test_pattern_report.cpp
+    test_registry_reload.cpp
     test_pe_file.cpp
     test_stack_walker.cpp
     test_trampoline_pool.cpp
     test_unhandled_filter.cpp
+    "${CMAKE_SOURCE_DIR}/core/src/diagnostics/hook_context.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/diagnostics/stack_walker.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/diagnostics/unhandled_filter.cpp"
+    "${CMAKE_SOURCE_DIR}/core/src/logger.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/mem/trampoline_pool.cpp"
     "${CMAKE_SOURCE_DIR}/core/src/win32/pe.cpp"
 )
@@ -17,6 +20,7 @@ target_link_libraries(PatchFix.Tests PRIVATE
     Catch2::Catch2WithMain
     mINI
     safetyhook
+    spdlog::spdlog_header_only
 )
 
 target_include_directories(PatchFix.Tests PRIVATE
