@@ -32,4 +32,11 @@ namespace hooks {
     template<typename Tag>
     concept HasOnReload =
         requires(const HookTraits<Tag>::Config &cfg) { HookTraits<Tag>::on_reload(cfg); };
+
+    // Undoes what the hook changed in the game when [Hooks] turns it off at
+    // runtime; reload() calls it once per transition to disabled. Turning the
+    // hook back on needs no counterpart, since on_reload runs for every enabled
+    // hook on each reload.
+    template<typename Tag>
+    concept HasOnDisable = requires { HookTraits<Tag>::on_disable(); };
 } // namespace hooks

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -151,6 +152,7 @@ namespace hooks {
                 bool (*is_enabled)(const Registry<HookList> &r) {};
                 bool (*is_installed)(const Registry<HookList> &r) {};
                 void (*call_on_reload)(Registry<HookList> &r) {};
+                void (*call_on_disable)() {};
             };
 
             // Resolves a pattern member pointer back to the signature name the
@@ -256,6 +258,11 @@ namespace hooks {
                     .call_on_reload = [](Registry<HookList> &r) -> void {
                         if constexpr (HasOnReload<Tag>) {
                             HookTraits<Tag>::on_reload(r.template config<Tag>());
+                        }
+                    },
+                    .call_on_disable = []() -> void {
+                        if constexpr (HasOnDisable<Tag>) {
+                            HookTraits<Tag>::on_disable();
                         }
                     },
                 };
@@ -402,11 +409,29 @@ namespace hooks {
         }
         log::get()->trace("reload: configs loaded");
 
+        std::array<bool, Ops::N> was_enabled {};
+        for (std::size_t i = 0; i < Ops::N; ++i) {
+            was_enabled.at(i) = ops.at(i).is_enabled(*this);
+        }
+
         Ops::apply_enabled_flags(*this, ops, ini);
 
-        // on_reload runs on the watcher thread, where the hook-name context is
-        // unset, so any byte it patches would go unrecorded in the patch registry
-        // and a later fault there would be reported as unattributed.
+        // The callbacks run on the watcher thread, where the hook-name context
+        // is unset, so any byte they patch would go unrecorded in the patch
+        // registry and a later fault there would be reported as unattributed.
+        //
+        // Hooks just turned off are undone in reverse install order, so a hook
+        // is undone before the hooks it depends on.
+        for (auto idx : std::views::reverse(Ops::install_order)) {
+            const auto &op = ops.at(idx);
+            if (op.is_installed(*this) && was_enabled.at(idx) && !op.is_enabled(*this)) {
+                log::get()->trace("reload: calling on_disable for '{}'", op.name);
+                diagnostics::set_current_hook_name(op.name);
+                op.call_on_disable();
+                diagnostics::set_current_hook_name({});
+            }
+        }
+
         for (const auto &op : ops) {
             if (op.is_installed(*this) && op.is_enabled(*this)) {
                 log::get()->trace("reload: calling on_reload for '{}'", op.name);
