@@ -28,7 +28,7 @@ namespace hooks {
         constexpr std::uintptr_t k_state_size_offset     = 0x4C;
         constexpr std::uintptr_t k_slot_info_size_offset = 0x50;
         // Inflated size, a local of the cloud thread at [ebp-0x0C].
-        constexpr std::uintptr_t k_inflated_size_offset = 0x0C;
+        constexpr std::intptr_t k_inflated_size_offset = -0x0C;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
@@ -54,7 +54,7 @@ namespace hooks {
                 }
                 const auto state_size     = read_u32(regs.edi + k_state_size_offset);
                 const auto slot_info_size = read_u32(regs.edi + k_slot_info_size_offset);
-                const auto inflated_size  = read_u32(regs.ebp - k_inflated_size_offset);
+                const auto inflated_size  = read_u32(regs.ebp + k_inflated_size_offset);
                 if (slot_info_size == 0 || inflated_size != state_size) {
                     return;
                 }
