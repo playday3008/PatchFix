@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <atomic>
 #include <string_view>
 #include <utility>
 
@@ -22,16 +23,20 @@ namespace hooks {
         // QueryPerformanceCounter, averages the last six frame deltas into the
         // game's dt and has no frame cap of its own. Waiting at its entry,
         // before it samples the clock, makes the wait part of the next measured
-        // delta, so game speed stays correct at any cap. At high frame rates
-        // the Endurance boss fight QTE never shows its second prompt; a 60 FPS
-        // cap avoids it.
-        constexpr float k_min_cap = 1.0F;
-
+        // delta, so game speed stays correct at caps of 15 and above; lower
+        // caps are raised to 15 (see k_floor_cap). At high frame rates the
+        // Endurance boss fight QTE never shows its second prompt; a 60 FPS cap
+        // avoids it.
         std::int64_t g_ticks_per_second = 0;
 
         // Only the game's main loop calls the timestep, so the pacer needs no
         // synchronization.
         games::tr::tr2013::FramePacer g_pacer;
+
+        // Whether waits may Sleep; written on reload, read by the main loop.
+        // Without a 1 ms timer resolution Sleep rounds up to ~15.6 ms, so the
+        // wait spins instead.
+        std::atomic<bool> g_may_sleep {false};
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
@@ -50,7 +55,7 @@ namespace hooks {
         void wait_until(std::int64_t target) {
             const std::int64_t ticks_per_ms = g_ticks_per_second / 1000;
             for (std::int64_t left = target - now_ticks(); left > 0; left = target - now_ticks()) {
-                if (left >= 2 * ticks_per_ms) {
+                if (g_may_sleep.load(std::memory_order_relaxed) && left >= 2 * ticks_per_ms) {
                     Sleep(static_cast<DWORD>((left / ticks_per_ms) - 1));
                 } else {
                     YieldProcessor();
@@ -58,11 +63,18 @@ namespace hooks {
             }
         }
 
+        // Holds the 1 ms timer resolution only while a cap is set.
         void apply_timer_resolution(float cap) {
-            if (cap < k_min_cap) {
+            if (games::tr::tr2013::frame_period(cap, g_ticks_per_second) == 0) {
+                g_may_sleep.store(false, std::memory_order_relaxed);
                 win32::restore_timer_resolution();
-            } else if (!win32::raise_timer_resolution()) {
-                log::get()->warn("TR2013 FrameLimiterHook: failed to raise timer resolution");
+                return;
+            }
+            const bool raised = win32::raise_timer_resolution();
+            g_may_sleep.store(raised, std::memory_order_relaxed);
+            if (!raised) {
+                log::get()->warn(
+                    "TR2013 FrameLimiterHook: failed to raise timer resolution, waiting without Sleep");
             }
         }
 
@@ -72,10 +84,8 @@ namespace hooks {
             [[maybe_unused]] static void operator()(mem::Registers & /*regs*/) {
                 auto       &registry = games::tr::tr2013::registry();
                 const float cap = registry.enabled<Tag>() ? registry.config<Tag>().cap.get() : 0.0F;
-                const auto  period =
-                    cap < k_min_cap
-                        ? std::int64_t {0}
-                        : static_cast<std::int64_t>(static_cast<double>(g_ticks_per_second) / cap);
+                const std::int64_t period =
+                    games::tr::tr2013::frame_period(cap, g_ticks_per_second);
 
                 const std::int64_t now  = now_ticks();
                 const std::int64_t wait = g_pacer.due(now, period);
