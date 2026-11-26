@@ -160,12 +160,15 @@ namespace hooks {
             log::get()->info("TR2013 SaveCompatibilityHook: Steam Cloud read at 0x{:X}", addr);
         }
 
+        // A failure past this point unhooks the cloud half, so a hook reported
+        // as failed does not keep running.
         if (addrs.save_inflate_result) {
             auto addr       = addrs.save_inflate_result.value();
             auto uncompress = mem::insn::branch_target(addr - k_call_size);
             if (!uncompress) {
                 log::get()->error("TR2013 SaveCompatibilityHook: expected a call before 0x{:X}",
                                   addr);
+                g_cloud_hook = {};
                 return false;
             }
             g_uncompress = reinterpret_cast<Uncompress>(*uncompress);
@@ -173,6 +176,7 @@ namespace hooks {
             auto result = mem::make_hook<AcceptTrailingSlotInfo>(addr);
             if (!result) {
                 log::get()->error("TR2013 SaveCompatibilityHook: {}", result.error());
+                g_cloud_hook = {};
                 return false;
             }
             g_local_hook = std::move(*result);
