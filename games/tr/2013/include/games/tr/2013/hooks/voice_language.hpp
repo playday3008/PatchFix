@@ -31,7 +31,9 @@ namespace hooks {
             &Addrs::vo_menu_apply,
             &Addrs::settings_getter_call,
         };
-        static constexpr auto optional_patterns = std::array<PatternField, 0> {};
+        static constexpr auto optional_patterns = std::array<PatternField, 1> {
+            &Addrs::vo_menu_row_lookup,
+        };
 
         using Config = empty_config;
 
