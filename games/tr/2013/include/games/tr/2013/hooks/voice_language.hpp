@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include <array>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "core/hooks/registry/config_base.hpp"
@@ -14,6 +16,46 @@
 
 namespace games::tr::tr2013 {
     struct VoiceLanguageHook {};
+
+    // Languages without voice-over ship a bigfile of under 200 KB, full voice
+    // packs about 1 GB.
+    inline constexpr std::uint64_t k_min_voice_pack_bytes = 64ULL << 20U;
+
+    [[nodiscard]] constexpr auto is_voice_pack(std::uint64_t size) -> bool {
+        return size >= k_min_voice_pack_bytes;
+    }
+
+    // The bigfile the options menu checks for voice language `id`, relative to
+    // the game directory, or empty for an id outside the game's language table.
+    // Japanese lives in its own directory.
+    [[nodiscard]] inline auto voice_bigfile(int id) -> std::string {
+        static constexpr auto k_names = std::to_array<std::string_view>({
+            "ENGLISH",
+            "FRENCH",
+            "GERMAN",
+            "ITALIAN",
+            "SPANISH",
+            "JAPANESE",
+            "PORTUGUESE",
+            "POLISH",
+            "UKENGLISH",
+            "RUSSIAN",
+            "CZECH",
+            "DUTCH",
+            "HUNGARIAN",
+            "ARABIC",
+            "KOREAN",
+            "CHINESE",
+        });
+        if (id < 0 || static_cast<std::size_t>(id) >= k_names.size()) {
+            return {};
+        }
+        std::string path = id == 5 ? "Japanese\\" : "";
+        path += "BIGFILE_";
+        path += k_names.at(static_cast<std::size_t>(id));
+        path += ".000.tiger";
+        return path;
+    }
 } // namespace games::tr::tr2013
 
 namespace hooks {
@@ -31,8 +73,9 @@ namespace hooks {
             &Addrs::vo_menu_apply,
             &Addrs::settings_getter_call,
         };
-        static constexpr auto optional_patterns = std::array<PatternField, 1> {
+        static constexpr auto optional_patterns = std::array<PatternField, 2> {
             &Addrs::vo_menu_row_lookup,
+            &Addrs::vo_menu_list_check,
         };
 
         using Config = empty_config;

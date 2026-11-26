@@ -2,13 +2,17 @@
 
 #include <cstddef>
 
+#include <filesystem>
 #include <string_view>
 #include <utility>
+
+#include <Windows.h>
 
 #include "core/logger.hpp" // IWYU pragma: keep
 
 #include "core/mem/hook.hpp"
 #include "core/mem/insn.hpp"
+#include "core/win32/pe.hpp"
 
 #include "games/tr/2013/registry.hpp"
 
@@ -41,6 +45,9 @@ namespace hooks {
 #pragma clang diagnostic ignored "-Wglobal-constructors"
         mem::MidHook g_hook;
         mem::MidHook g_row_hook;
+        mem::MidHook g_list_hook;
+
+        std::filesystem::path g_game_dir;
 #pragma clang diagnostic pop
 
         // Options-menu control ids (sub_ABFD00 switch) and list heads in the menu object.
@@ -94,6 +101,35 @@ namespace hooks {
                     *reinterpret_cast<const std::uintptr_t *>(regs.edi + k_voice_list_offset);
             }
         };
+
+        // The menu offers every language whose bigfile exists, but five ship
+        // only a stub without voice-over and play English. Runs after that
+        // existence check returns, with the language id in esi and the result
+        // in al; clears al for a stub. A file whose size can't be read stays.
+        struct HideStubLanguages {
+            [[maybe_unused]] static constexpr std::string_view name = "VoiceLanguage/List";
+
+            [[maybe_unused]] static void operator()(mem::Registers &regs) {
+                if (!games::tr::tr2013::registry().enabled<Tag>() || (regs.eax & 0xFFU) == 0) {
+                    return;
+                }
+                const auto file = games::tr::tr2013::voice_bigfile(static_cast<int>(regs.esi));
+                if (file.empty()) {
+                    return;
+                }
+                WIN32_FILE_ATTRIBUTE_DATA info {};
+                if (GetFileAttributesExW((g_game_dir / file).c_str(),
+                                         GetFileExInfoStandard,
+                                         &info) == 0) {
+                    return;
+                }
+                const auto size = (std::uint64_t {info.nFileSizeHigh} << 32U) | info.nFileSizeLow;
+                if (games::tr::tr2013::is_voice_pack(size)) {
+                    return;
+                }
+                regs.eax &= ~std::uintptr_t {0xFF};
+            }
+        };
     } // namespace
 
     auto HookTraits<Tag>::install(const Addrs &addrs) -> bool {
@@ -123,6 +159,20 @@ namespace hooks {
                 log::get()->info("TR2013 VoiceLanguageHook: menu row fix at 0x{:X}", row_addr);
             } else {
                 log::get()->warn("TR2013 VoiceLanguageHook: menu row fix: {}", row_result.error());
+            }
+        }
+
+        if (addrs.vo_menu_list_check) {
+            g_game_dir       = win32::get_module_path(nullptr).parent_path();
+            auto list_addr   = addrs.vo_menu_list_check.value();
+            auto list_result = mem::make_hook<HideStubLanguages>(list_addr);
+            if (list_result) {
+                g_list_hook = std::move(*list_result);
+                log::get()->info("TR2013 VoiceLanguageHook: stub language filter at 0x{:X}",
+                                 list_addr);
+            } else {
+                log::get()->warn("TR2013 VoiceLanguageHook: stub language filter: {}",
+                                 list_result.error());
             }
         }
         return true;

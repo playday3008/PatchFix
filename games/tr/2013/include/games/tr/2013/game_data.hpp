@@ -33,6 +33,7 @@ namespace games {
             std::optional<std::uintptr_t> vo_menu_apply;
             std::optional<std::uintptr_t> settings_getter_call;
             std::optional<std::uintptr_t> vo_menu_row_lookup;
+            std::optional<std::uintptr_t> vo_menu_list_check;
             std::optional<std::uintptr_t> cloud_inflate_result;
             std::optional<std::uintptr_t> save_inflate_result;
         };
@@ -53,6 +54,7 @@ namespace games {
             // Non-Steam builds only (checked on Epic): the Steam build takes its voice language from the Steam client and has no VOLanguage setting.
             {.name="VO_MENU_APPLY",           .field=&ResolvedAddresses::vo_menu_apply,           .offset=0x0F, .bytes="8B 9E F0 14 00 00 E8 ? ? ? ? 3B D8 74 ? 8B 86 EC 14 00 00 50 53 50 E8 ? ? ? ? 0F B7 86 F0 14 00 00"},
             {.name="SETTINGS_GETTER_CALL",    .field=&ResolvedAddresses::settings_getter_call,    .offset=0x07, .bytes="C7 45 FC FF FF FF FF E8 ? ? ? ? 8D 4D FC 51 8D 4D F8 8B 10 51 6A 00 68 ? ? ? ? 8B C8 FF 52 28 66 8B 45 F8"},
+            {.name="VO_MENU_LIST_CHECK",      .field=&ResolvedAddresses::vo_menu_list_check,      .offset=0x0B, .bytes="33 FF 83 CE FF 56 E8 ? ? ? ? 83 C4 04 84 C0 74 ? 8B C7 89 75 F8"},
             {.name="VO_MENU_ROW_LOOKUP",      .field=&ResolvedAddresses::vo_menu_row_lookup,      .offset=0x06, .bytes="8B 97 F4 14 00 00 89 45 FC 8B 0A 3B CA 74 ? 8B 41 0C 3B 45 08 75 ? 83 FE 1D 74 ? 3B 45 FC 75 ? 83 FE 1E 74"},
             // Steam build only: Steam Cloud save files.
             {.name="CLOUD_INFLATE_RESULT",    .field=&ResolvedAddresses::cloud_inflate_result,    .offset=0x00, .bytes="83 C4 10 85 C0 75 ? 8B 47 54 83 F8 64 7C ? 3D C9 00 00 00 74 ? FF 77 50 8B 47 4C 03 C6 50 FF 77 48 E8"},
