@@ -17,33 +17,26 @@
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
 
 namespace diagnostics {
+    // A hook callback is default-constructed and called inside __try, which
+    // cannot unwind a destructor; its name labels the crash report and log.
     template<typename F>
-    concept named_functor = requires {
-        { F::name } -> std::convertible_to<std::string_view>;
-    };
+    concept HookCallback = std::default_initializable<F> && std::is_trivially_destructible_v<F> &&
+                           requires(F f, safetyhook::Context &regs) {
+                               { F::name } -> std::convertible_to<std::string_view>;
+                               f(regs);
+                           };
 
-    template<typename Functor>
+    template<HookCallback Functor>
     void guarded_callback(safetyhook::Context &regs) {
-        static_assert(std::is_trivially_destructible_v<Functor>,
-                      "Functor must be trivially destructible for SEH guard");
-
         static std::atomic<bool> s_faulted {false};
         if (s_faulted.load(std::memory_order_relaxed)) {
             return;
         }
         __try {
             Functor {}(regs);
-        } __except ([] -> int {
-            if constexpr (named_functor<Functor>) {
-                return callback_fault_filter(GetExceptionInformation(), Functor::name);
-            } else {
-                return callback_fault_filter(GetExceptionInformation());
-            }
-        }()) {
+        } __except (callback_fault_filter(GetExceptionInformation(), Functor::name)) {
             s_faulted.store(true, std::memory_order_relaxed);
-            if constexpr (named_functor<Functor>) {
-                log::get(Functor::name)->critical("Hook callback crashed — permanently disabled");
-            }
+            log::get(Functor::name)->critical("Hook callback crashed — permanently disabled");
         }
     }
 

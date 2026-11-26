@@ -47,7 +47,7 @@ namespace mem {
         }
     };
 
-    template<typename Functor>
+    template<diagnostics::HookCallback Functor>
     [[nodiscard]] auto make_hook(std::uintptr_t addr) -> std::expected<MidHook, std::string> {
         auto result = MidHook::create(addr, diagnostics::guarded_callback<Functor>);
         if (result) {
@@ -61,7 +61,7 @@ namespace mem {
         return result;
     }
 
-    template<typename Functor>
+    template<diagnostics::HookCallback Functor>
     [[nodiscard]] auto make_hook(std::uintptr_t addr, std::uintptr_t end)
         -> std::expected<MidHook, std::string> {
         // Callers that pass an end emulate the instructions they erase. If the
