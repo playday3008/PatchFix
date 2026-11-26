@@ -76,11 +76,13 @@ namespace hooks {
         };
 
         // The menu maps the current voice language to a dropdown row by searching
-        // the text-language list, which is ordered differently from the voice list
-        // after Spanish, so e.g. Russian shows as Polish. Runs after edx is loaded
-        // with the text list head; points it at the voice list for the voice control.
+        // the text-language list, which has its own fixed order (Spanish before
+        // Italian, Japanese last), while the voice list holds the installed
+        // languages in id order. A saved language therefore shows as a different
+        // one, e.g. Russian as Polish. Runs after edx is loaded with the text list
+        // head; points it at the voice list for the voice control.
         struct VoiceRowLookup {
-            [[maybe_unused]] static constexpr std::string_view name = "VoiceLanguageRow";
+            [[maybe_unused]] static constexpr std::string_view name = "VoiceLanguage/Row";
 
             [[maybe_unused]] static void operator()(mem::Registers &regs) {
                 if (!games::tr::tr2013::registry().enabled<Tag>() ||
@@ -121,9 +123,6 @@ namespace hooks {
             } else {
                 log::get()->warn("TR2013 VoiceLanguageHook: menu row fix: {}", row_result.error());
             }
-        } else {
-            log::get()->warn("TR2013 VoiceLanguageHook: VO_MENU_ROW_LOOKUP not found, menu may "
-                             "show the wrong voice language");
         }
         return true;
     }
