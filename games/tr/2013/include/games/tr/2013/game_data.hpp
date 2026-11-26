@@ -61,6 +61,4 @@ namespace games {
         });
         // clang-format on
     };
-
-    static_assert(ValidGameData<tr::TR2013>);
 } // namespace games

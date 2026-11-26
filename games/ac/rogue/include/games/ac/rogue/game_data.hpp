@@ -92,6 +92,4 @@ namespace games {
         });
         // clang-format on
     };
-
-    static_assert(ValidGameData<ac::Rogue>);
 } // namespace games

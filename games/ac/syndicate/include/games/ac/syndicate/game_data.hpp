@@ -49,7 +49,4 @@ namespace games {
         });
         // clang-format on
     };
-
-    static_assert(ValidGameData<ac::Syndicate>);
-    static_assert(HasVmprotect<ac::Syndicate>);
 } // namespace games

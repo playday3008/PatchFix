@@ -30,7 +30,7 @@
 
 #include "plugin_info.hpp"
 
-template<typename G, typename Registry>
+template<games::ValidGameData G, typename Registry>
 void init_game(Registry                    &registry,
                const std::filesystem::path &ini_path,
                const std::stop_token       &stop) {
@@ -132,7 +132,7 @@ void init_game(Registry                    &registry,
     log::get()->info("File watcher started for {}", ini_path.string());
 }
 
-template<typename G, typename Registry>
+template<games::ValidGameData G, typename Registry>
 void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &registry) {
     auto dll_dir  = win32::get_module_path(hModule).parent_path();
     auto exe_name = win32::get_module_path(nullptr).filename().string();
