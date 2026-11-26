@@ -19,9 +19,10 @@ namespace hooks {
         // every frame and stores it to CameraState+0xA0, which the frustum and
         // projection read. Scaling the value at those stores widens the view
         // without touching camera profile data. Cutscenes run through
-        // CameraBoneCameraController, which writes the FOV elsewhere, so their
-        // framing is unchanged. The camera shake FOV pulse is added later, on
-        // top of the scaled value.
+        // CameraBoneCameraController, which stores the FOV to the same field
+        // through an instruction this hook does not patch, so their framing is
+        // unchanged. The camera shake FOV pulse is added later, on top of the
+        // scaled value.
         constexpr float k_deg_to_rad = std::numbers::pi_v<float> / 180.0F;
         constexpr float k_min_fov    = 1.0F * k_deg_to_rad;
         constexpr float k_max_fov    = 160.0F * k_deg_to_rad;
