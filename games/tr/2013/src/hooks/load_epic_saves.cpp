@@ -17,12 +17,12 @@ namespace hooks {
     namespace {
         using Tag = games::tr::tr2013::LoadEpicSavesHook;
 
-        // The Steam build stores each save as the game state followed by a
-        // 40-byte copy of its slot info (date, progress), compressed as one
-        // stream, and fills the load menu's slot entry from that copy. Epic
-        // saves end after the game state, so the copy is read from memory the
-        // inflate never wrote. The game state starts with the same slot info
-        // fields, so they are copied from there.
+        // The Steam build stores each save as the game state followed by 40
+        // bytes of slot info (date, progress), compressed as one stream, and
+        // fills the load menu's slot entry from that trailing slot info. Epic
+        // saves end after the game state, so it is read from memory the inflate
+        // never wrote. The game state starts with the same slot info fields,
+        // which is where the Epic build reads them, so they are copied from there.
 
         // Offsets into the cloud request, the thread parameter in edi.
         constexpr std::uintptr_t k_state_size_offset     = 0x4C;
@@ -58,10 +58,9 @@ namespace hooks {
                 if (slot_info_size == 0 || inflated_size != state_size) {
                     return;
                 }
-                auto *buffer = reinterpret_cast<std::byte *>(regs.esi);
-                // Indexes the game's buffer.
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                std::memcpy(buffer + state_size, buffer, slot_info_size);
+                std::memcpy(reinterpret_cast<void *>(regs.esi + state_size),
+                            reinterpret_cast<const void *>(regs.esi),
+                            slot_info_size);
                 log::get()->info("TR2013 LoadEpicSavesHook: filled slot info of a save without it");
             }
         };
