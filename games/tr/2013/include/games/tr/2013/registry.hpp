@@ -6,6 +6,7 @@
 #include "games/tr/2013/hooks/cinematic_aspect.hpp"
 #include "games/tr/2013/hooks/fov_scale.hpp"
 #include "games/tr/2013/hooks/frame_limiter.hpp"
+#include "games/tr/2013/hooks/load_steam_saves.hpp"
 #include "games/tr/2013/hooks/movie_relayout.hpp"
 #include "games/tr/2013/hooks/voice_language.hpp"
 
@@ -15,7 +16,8 @@ namespace games::tr::tr2013 {
                                       CinematicAspectHook,
                                       VoiceLanguageHook,
                                       FovScaleHook,
-                                      FrameLimiterHook>;
+                                      FrameLimiterHook,
+                                      LoadSteamSavesHook>;
 
     using TR2013Registry = hooks::Registry<AllHooks>;
 
