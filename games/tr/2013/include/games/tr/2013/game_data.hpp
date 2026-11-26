@@ -32,6 +32,7 @@ namespace games {
             std::optional<std::uintptr_t> frame_timestep;
             std::optional<std::uintptr_t> vo_menu_apply;
             std::optional<std::uintptr_t> settings_getter_call;
+            std::optional<std::uintptr_t> cloud_inflate_result;
         };
 
         // clang-format off
@@ -50,6 +51,8 @@ namespace games {
             // Epic (and possibly GOG) builds only: the Steam build takes its voice language from the Steam client and has no VOLanguage setting.
             {.name="VO_MENU_APPLY",           .field=&ResolvedAddresses::vo_menu_apply,           .offset=0x0F, .bytes="8B 9E F0 14 00 00 E8 ? ? ? ? 3B D8 74 ? 8B 86 EC 14 00 00 50 53 50 E8 ? ? ? ? 0F B7 86 F0 14 00 00"},
             {.name="SETTINGS_GETTER_CALL",    .field=&ResolvedAddresses::settings_getter_call,    .offset=0x07, .bytes="C7 45 FC FF FF FF FF E8 ? ? ? ? 8D 4D FC 51 8D 4D F8 8B 10 51 6A 00 68 ? ? ? ? 8B C8 FF 52 28 66 8B 45 F8"},
+            // Steam build only: Steam Cloud save files.
+            {.name="CLOUD_INFLATE_RESULT",    .field=&ResolvedAddresses::cloud_inflate_result,    .offset=0x00, .bytes="83 C4 10 85 C0 75 ? 8B 47 54 83 F8 64 7C ? 3D C9 00 00 00 74 ? FF 77 50 8B 47 4C 03 C6 50 FF 77 48 E8"},
         });
         // clang-format on
     };
