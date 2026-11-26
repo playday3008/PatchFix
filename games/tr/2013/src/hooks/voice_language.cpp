@@ -39,7 +39,12 @@ namespace hooks {
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
         mem::MidHook g_hook;
+        mem::MidHook g_row_hook;
 #pragma clang diagnostic pop
+
+        // Options-menu control ids (sub_ABFD00 switch) and list heads in the menu object.
+        constexpr std::uintptr_t k_voice_language_control = 0x1E;
+        constexpr std::uintptr_t k_voice_list_offset      = 0x14FC;
 
         // Runs on the branch the menu takes when the voice language changed,
         // with the new language id in ebx.
@@ -69,6 +74,25 @@ namespace hooks {
                 log::get()->info("TR2013 VoiceLanguageHook: saved voice language {}", language);
             }
         };
+
+        // The menu maps the current voice language to a dropdown row by searching
+        // the text-language list, which has its own fixed order (Spanish before
+        // Italian, Japanese last), while the voice list holds the installed
+        // languages in id order. A saved language therefore shows as a different
+        // one, e.g. Russian as Polish. Runs after edx is loaded with the text list
+        // head; points it at the voice list for the voice control.
+        struct VoiceRowLookup {
+            [[maybe_unused]] static constexpr std::string_view name = "VoiceLanguage/Row";
+
+            [[maybe_unused]] static void operator()(mem::Registers &regs) {
+                if (!games::tr::tr2013::registry().enabled<Tag>() ||
+                    regs.esi != k_voice_language_control) {
+                    return;
+                }
+                regs.edx =
+                    *reinterpret_cast<const std::uintptr_t *>(regs.edi + k_voice_list_offset);
+            }
+        };
     } // namespace
 
     auto HookTraits<Tag>::install(const Addrs &addrs) -> bool {
@@ -89,6 +113,17 @@ namespace hooks {
         g_hook = std::move(*result);
 
         log::get()->info("TR2013 VoiceLanguageHook: installed at 0x{:X}", addr);
+
+        if (addrs.vo_menu_row_lookup) {
+            auto row_addr   = addrs.vo_menu_row_lookup.value();
+            auto row_result = mem::make_hook<VoiceRowLookup>(row_addr);
+            if (row_result) {
+                g_row_hook = std::move(*row_result);
+                log::get()->info("TR2013 VoiceLanguageHook: menu row fix at 0x{:X}", row_addr);
+            } else {
+                log::get()->warn("TR2013 VoiceLanguageHook: menu row fix: {}", row_result.error());
+            }
+        }
         return true;
     }
 } // namespace hooks
