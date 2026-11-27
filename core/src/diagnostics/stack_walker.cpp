@@ -142,7 +142,7 @@ namespace diagnostics {
 
     void module_file_name(HMODULE module, std::array<char, MAX_PATH> &out) {
         // The wide name is never truncated by the ANSI code page's longer
-        // encoding, and only the file name is converted, to UTF-8, in place.
+        // encoding; only the file name is converted, to UTF-8, into `out`.
         std::array<wchar_t, MAX_PATH> path {};
         const DWORD len = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
         if (len == 0) {
