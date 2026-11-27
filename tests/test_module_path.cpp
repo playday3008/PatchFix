@@ -41,8 +41,7 @@ namespace {
         explicit ModuleCopy(const std::filesystem::path &dir)
             : guard(dir),
               path(dir / L"copy.exe") {
-            std::wstring self(MAX_PATH, L'\0');
-            self.resize(GetModuleFileNameW(nullptr, self.data(), MAX_PATH));
+            const auto self = win32::get_module_path(nullptr);
             std::filesystem::copy_file(self,
                                        path,
                                        std::filesystem::copy_options::overwrite_existing);
@@ -92,4 +91,23 @@ TEST_CASE("get_module_path keeps a non-ASCII directory under both narrow path co
     const auto path = win32::get_module_path(copy.module);
     CHECK(path.native() == copy.path.native());
     CHECK(std::filesystem::exists(path));
+}
+
+TEST_CASE("get_module_path returns a path longer than MAX_PATH whole", "[win32][path]") {
+    // \\?\ lifts the MAX_PATH limit for the file APIs and the loader.
+    auto dir = std::filesystem::path(L"\\\\?\\" + std::filesystem::temp_directory_path().native()) /
+               (L"PatchFix long " + std::to_wstring(GetCurrentProcessId()));
+    const auto root = dir;
+    while (dir.native().size() < 2 * MAX_PATH) {
+        dir /= std::wstring(60, L'd');
+    }
+
+    const DirGuard   root_guard(root);
+    const ModuleCopy copy(dir);
+    REQUIRE(copy.module != nullptr);
+
+    const auto path = win32::get_module_path(copy.module);
+    CHECK(path.native().size() > MAX_PATH);
+    CHECK(path.filename() == L"copy.exe");
+    CHECK(path.parent_path().filename() == dir.filename());
 }
