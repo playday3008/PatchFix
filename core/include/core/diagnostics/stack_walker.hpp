@@ -24,9 +24,7 @@ namespace diagnostics {
     };
 
     auto capture_stack(const CONTEXT *ctx, std::span<StackFrame> buf) -> std::span<StackFrame>;
-    void resolve_modules(std::span<StackFrame> frames);
-
-    // The file name of `module` as UTF-8, or empty on failure.
     auto module_file_name(HMODULE module) -> std::string;
+    void resolve_modules(std::span<StackFrame> frames);
     void resolve_symbols(std::span<StackFrame> frames);
 } // namespace diagnostics
