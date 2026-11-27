@@ -21,9 +21,9 @@ namespace games::tr::tr2013 {
     // Caps below this turn the limiter off.
     inline constexpr float k_min_cap = 1.0F;
 
-    // The game's timestep clamps each frame delta at 66666 us, so a frame longer
-    // than 1/15 s runs the game in slow motion. Caps from k_min_cap up to this
-    // value are raised to it.
+    // The game's timestep clamps the average of the last six frame deltas at
+    // 66666 us, so a frame rate held below 15 FPS runs the game in slow motion.
+    // Caps from k_min_cap up to this value are raised to it.
     inline constexpr float k_floor_cap = 15.0F;
 
     // Clock ticks per frame for `cap` frames per second; 0 means off.
