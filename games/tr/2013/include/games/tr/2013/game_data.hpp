@@ -37,6 +37,9 @@ namespace games {
             std::optional<std::uintptr_t> vo_japanese_dir_flag;
             std::optional<std::uintptr_t> cloud_inflate_result;
             std::optional<std::uintptr_t> save_inflate_result;
+            std::optional<std::uintptr_t> highlight_release;
+            std::optional<std::uintptr_t> mouse_mode_set;
+            std::optional<std::uintptr_t> mouse_mode_unlock;
         };
 
         // clang-format off
@@ -62,6 +65,9 @@ namespace games {
             {.name="CLOUD_INFLATE_RESULT",    .field=&ResolvedAddresses::cloud_inflate_result,    .offset=0x00, .bytes="83 C4 10 85 C0 75 ? 8B 47 54 83 F8 64 7C ? 3D C9 00 00 00 74 ? FF 77 50 8B 47 4C 03 C6 50 FF 77 48 E8"},
             // Non-Steam builds only (checked on Epic): local save files.
             {.name="SAVE_INFLATE_RESULT",     .field=&ResolvedAddresses::save_inflate_result,     .offset=0x10, .bytes="FF 75 F8 8D 45 F4 56 50 FF 77 54 E8 ? ? ? ? 83 C4 10 85 C0 74 02 32 DB"},
+            {.name="HIGHLIGHT_RELEASE",       .field=&ResolvedAddresses::highlight_release,       .offset=0x00, .bytes="56 8B F1 8B 4E ? 85 C9 74 ? 8B 01 6A ? FF 10 C7 46 ? ? ? ? ? C7 05"},
+            {.name="MOUSE_MODE_SET",          .field=&ResolvedAddresses::mouse_mode_set,          .offset=0x00, .bytes="55 8B EC 80 3D ? ? ? ? ? 75 ? 83 3D"},
+            {.name="MOUSE_MODE_UNLOCK",       .field=&ResolvedAddresses::mouse_mode_unlock,       .offset=0x00, .bytes="A1 ? ? ? ? C6 05 ? ? ? ? ? 3B 05"},
         });
         // clang-format on
     };
