@@ -1,6 +1,7 @@
 #include "games/tr/2013/hooks/voice_language.hpp"
 
 #include <cstddef>
+#include <cstdint>
 
 #include <filesystem>
 #include <string_view>
@@ -49,6 +50,10 @@ namespace hooks {
 
         std::filesystem::path g_game_dir;
 #pragma clang diagnostic pop
+
+        // The game's flag for looking up every language's bigfile under
+        // Japanese\, or null when its pattern was not found.
+        const volatile std::uint8_t *g_japanese_dir = nullptr;
 
         // Options-menu control ids (sub_ABFD00 switch) and list heads in the menu object.
         constexpr std::uintptr_t k_voice_language_control = 0x1E;
@@ -113,7 +118,9 @@ namespace hooks {
                 if (!games::tr::tr2013::registry().enabled<Tag>() || (regs.eax & 0xFFU) == 0) {
                     return;
                 }
-                const auto file = games::tr::tr2013::voice_bigfile(static_cast<int>(regs.esi));
+                const bool japanese_dir = g_japanese_dir != nullptr && *g_japanese_dir != 0;
+                const auto file =
+                    games::tr::tr2013::voice_bigfile(static_cast<int>(regs.esi), japanese_dir);
                 if (file.empty()) {
                     return;
                 }
@@ -163,7 +170,13 @@ namespace hooks {
         }
 
         if (addrs.vo_menu_list_check) {
-            g_game_dir       = win32::get_module_path(nullptr).parent_path();
+            g_game_dir = win32::get_module_path(nullptr).parent_path();
+            if (addrs.vo_japanese_dir_flag) {
+                // The pattern lands on the flag's absolute address in a cmp.
+                // NOLINTNEXTLINE(performance-no-int-to-ptr)
+                g_japanese_dir = *reinterpret_cast<const volatile std::uint8_t *const *>(
+                    addrs.vo_japanese_dir_flag.value());
+            }
             auto list_addr   = addrs.vo_menu_list_check.value();
             auto list_result = mem::make_hook<HideStubLanguages>(list_addr);
             if (list_result) {

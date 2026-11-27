@@ -27,8 +27,9 @@ namespace games::tr::tr2013 {
 
     // The bigfile the options menu checks for voice language `id`, relative to
     // the game directory, or empty for an id outside the game's language table.
-    // Japanese lives in its own directory.
-    [[nodiscard]] inline auto voice_bigfile(int id) -> std::string {
+    // Japanese lives in its own directory, which the game also uses for every
+    // language when `japanese_dir` (set for a Japanese user locale) is on.
+    [[nodiscard]] inline auto voice_bigfile(int id, bool japanese_dir) -> std::string {
         static constexpr auto k_names = std::to_array<std::string_view>({
             "ENGLISH",
             "FRENCH",
@@ -50,7 +51,7 @@ namespace games::tr::tr2013 {
         if (id < 0 || static_cast<std::size_t>(id) >= k_names.size()) {
             return {};
         }
-        std::string path = id == 5 ? "Japanese\\" : "";
+        std::string path = id == 5 || japanese_dir ? "Japanese\\" : "";
         path += "BIGFILE_";
         path += k_names.at(static_cast<std::size_t>(id));
         path += ".000.tiger";
@@ -73,9 +74,10 @@ namespace hooks {
             &Addrs::vo_menu_apply,
             &Addrs::settings_getter_call,
         };
-        static constexpr auto optional_patterns = std::array<PatternField, 2> {
+        static constexpr auto optional_patterns = std::array<PatternField, 3> {
             &Addrs::vo_menu_row_lookup,
             &Addrs::vo_menu_list_check,
+            &Addrs::vo_japanese_dir_flag,
         };
 
         using Config = empty_config;

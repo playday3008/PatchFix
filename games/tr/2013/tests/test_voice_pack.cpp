@@ -17,15 +17,22 @@ TEST_CASE("is_voice_pack accepts the full bigfiles", "[tr2013][voice]") {
     CHECK(is_voice_pack(1'067'450'000));
 }
 
-TEST_CASE("voice_bigfile names the file the menu checks", "[tr2013][voice]") {
-    CHECK(voice_bigfile(0) == "BIGFILE_ENGLISH.000.tiger");
-    CHECK(voice_bigfile(9) == "BIGFILE_RUSSIAN.000.tiger");
-    CHECK(voice_bigfile(10) == "BIGFILE_CZECH.000.tiger");
-    CHECK(voice_bigfile(15) == "BIGFILE_CHINESE.000.tiger");
-    CHECK(voice_bigfile(5) == "Japanese\\BIGFILE_JAPANESE.000.tiger");
+TEST_CASE("voice_bigfile names the file the menu checks by default", "[tr2013][voice]") {
+    CHECK(voice_bigfile(0, false) == "BIGFILE_ENGLISH.000.tiger");
+    CHECK(voice_bigfile(9, false) == "BIGFILE_RUSSIAN.000.tiger");
+    CHECK(voice_bigfile(10, false) == "BIGFILE_CZECH.000.tiger");
+    CHECK(voice_bigfile(15, false) == "BIGFILE_CHINESE.000.tiger");
+    CHECK(voice_bigfile(5, false) == "Japanese\\BIGFILE_JAPANESE.000.tiger");
 }
 
 TEST_CASE("voice_bigfile has no file for ids outside the language table", "[tr2013][voice]") {
-    CHECK(voice_bigfile(-1).empty());
-    CHECK(voice_bigfile(16).empty());
+    CHECK(voice_bigfile(-1, false).empty());
+    CHECK(voice_bigfile(16, true).empty());
+}
+
+TEST_CASE("voice_bigfile looks under Japanese for every language when the game does",
+          "[tr2013][voice]") {
+    CHECK(voice_bigfile(0, true) == "Japanese\\BIGFILE_ENGLISH.000.tiger");
+    CHECK(voice_bigfile(10, true) == "Japanese\\BIGFILE_CZECH.000.tiger");
+    CHECK(voice_bigfile(5, true) == "Japanese\\BIGFILE_JAPANESE.000.tiger");
 }
