@@ -140,6 +140,29 @@ namespace diagnostics {
         return buf.first(static_cast<std::size_t>(out - buf.begin()));
     }
 
+    void module_file_name(HMODULE module, std::array<char, MAX_PATH> &out) {
+        // The wide name is never truncated by the ANSI code page's longer
+        // encoding, and only the file name is converted, to UTF-8, in place.
+        std::array<wchar_t, MAX_PATH> path {};
+        const DWORD len = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
+        if (len == 0) {
+            out.front() = '\0';
+            return;
+        }
+        const std::wstring_view full(path.data(), len);
+        const auto              sep  = full.rfind(L'\\');
+        const auto              name = sep != std::wstring_view::npos ? full.substr(sep + 1) : full;
+        const int               written = WideCharToMultiByte(CP_UTF8,
+                                                              0,
+                                                              name.data(),
+                                                              static_cast<int>(name.size()),
+                                                              out.data(),
+                                                              static_cast<int>(out.size() - 1),
+                                                              nullptr,
+                                                              nullptr);
+        out.at(static_cast<std::size_t>(written > 0 ? written : 0)) = '\0';
+    }
+
     void resolve_modules(std::span<StackFrame> frames) {
         for (auto &frame : frames) {
             HMODULE hModule = nullptr;
@@ -152,19 +175,7 @@ namespace diagnostics {
             frame.module_base   = reinterpret_cast<std::uintptr_t>(hModule);
             frame.module_offset = frame.address - frame.module_base;
 
-            if (GetModuleFileNameA(hModule, frame.module_name.data(), frame.module_name.size()) ==
-                0) {
-                continue;
-            }
-
-            const std::string_view path(frame.module_name.data());
-            const auto             sep = path.rfind('\\');
-            if (sep != std::string_view::npos) {
-                auto                       filename = path.substr(sep + 1);
-                std::array<char, MAX_PATH> tmp {};
-                std::copy_n(filename.data(), filename.size() + 1, tmp.data());
-                frame.module_name = tmp;
-            }
+            module_file_name(hModule, frame.module_name);
         }
     }
 

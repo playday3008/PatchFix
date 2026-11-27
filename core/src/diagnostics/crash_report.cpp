@@ -257,19 +257,14 @@ namespace diagnostics {
         if (has_module) {
             auto base          = reinterpret_cast<std::uintptr_t>(hModule);
             auto module_offset = fault_addr - base;
-            if (GetModuleFileNameA(hModule,
-                                   module_path.data(),
-                                   static_cast<DWORD>(module_path.size())) == 0) {
+            module_file_name(hModule, module_path);
+            if (module_path.front() == '\0') {
                 has_module = false;
             } else {
-                const std::string_view path(module_path.data());
-                const auto             sep = path.rfind('\\');
-                const auto module_name     = (sep != std::string_view::npos) ? path.substr(sep + 1)
-                                                                             : path;
                 logger.critical("VEH: {} (0x{:08X}) at {}+0x{:X}",
                                 exception_code_name(code),
                                 code,
-                                module_name,
+                                module_path.data(),
                                 module_offset);
             }
         }

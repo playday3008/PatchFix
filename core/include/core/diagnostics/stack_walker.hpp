@@ -24,5 +24,9 @@ namespace diagnostics {
 
     auto capture_stack(const CONTEXT *ctx, std::span<StackFrame> buf) -> std::span<StackFrame>;
     void resolve_modules(std::span<StackFrame> frames);
+
+    // Writes the file name of `module` into `out` as UTF-8, or an empty string
+    // on failure. Does not allocate, so it is safe in the crash path.
+    void module_file_name(HMODULE module, std::array<char, MAX_PATH> &out);
     void resolve_symbols(std::span<StackFrame> frames);
 } // namespace diagnostics
