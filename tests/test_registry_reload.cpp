@@ -2,7 +2,9 @@
 
 #include <array>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -32,9 +34,13 @@ namespace {
     Calls g_base;
     Calls g_dependent;
 
+    // Names of the hooks whose on_disable ran, in call order.
+    std::vector<std::string> g_disable_order;
+
     void reset_calls() {
         g_base      = {};
         g_dependent = {};
+        g_disable_order.clear();
     }
 
     template<typename HardDeps>
@@ -57,7 +63,10 @@ namespace hooks {
         static constexpr std::string_view name = "Base";
 
         static void on_reload(const Config & /*cfg*/) { ++g_base.reload; }
-        static void on_disable() { ++g_base.disable; }
+        static void on_disable() {
+            ++g_base.disable;
+            g_disable_order.emplace_back(name);
+        }
     };
 
     template<>
@@ -65,7 +74,10 @@ namespace hooks {
         static constexpr std::string_view name = "Dependent";
 
         static void on_reload(const Config & /*cfg*/) { ++g_dependent.reload; }
-        static void on_disable() { ++g_dependent.disable; }
+        static void on_disable() {
+            ++g_dependent.disable;
+            g_disable_order.emplace_back(name);
+        }
     };
 
     // Has neither callback; reload must still compile and run for it.
@@ -152,4 +164,14 @@ TEST_CASE("reload leaves other hooks alone when one is turned off", "[registry][
     CHECK(g_base.disable == 0);
     CHECK(g_base.reload == 1);
     CHECK_FALSE(registry.enabled<PlainHook>());
+}
+
+TEST_CASE("reload undoes a hook before the hooks it depends on", "[registry][reload]") {
+    reset_calls();
+    MockRegistry registry;
+    mark_installed(registry);
+    auto off = ini_with("Base", "false");
+
+    registry.reload(off);
+    CHECK(g_disable_order == std::vector<std::string> {"Dependent", "Base"});
 }

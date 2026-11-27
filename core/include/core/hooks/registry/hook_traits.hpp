@@ -37,6 +37,10 @@ namespace hooks {
     // runtime; reload() calls it once per transition to disabled. Turning the
     // hook back on needs no counterpart, since on_reload runs for every enabled
     // hook on each reload.
+    //
+    // It runs on the watcher thread after the enabled flag is cleared, but a
+    // callback that already read the flag may still be running on the game
+    // thread and can redo the change after on_disable undoes it.
     template<typename Tag>
     concept HasOnDisable = requires { HookTraits<Tag>::on_disable(); };
 } // namespace hooks
