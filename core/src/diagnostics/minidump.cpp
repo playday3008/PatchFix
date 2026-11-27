@@ -32,7 +32,7 @@ namespace diagnostics {
 #pragma clang diagnostic pop
         }
 
-        // <plugin dir>\\<plugin name>.<timestamp>.dmp, or patchfix_crash.<timestamp>.dmp
+        // <plugin dir>\<plugin name>.<timestamp>.dmp, or patchfix_crash.<timestamp>.dmp
         // in the working directory when the plugin's own path is unavailable.
         auto build_dump_path() -> std::filesystem::path {
             HMODULE               self = nullptr;
