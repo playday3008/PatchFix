@@ -5,10 +5,13 @@
 
 #include <algorithm>
 #include <mutex>
-#include <string_view>
+#include <string>
 
 #include <Windows.h>
 #include <DbgHelp.h>
+
+#include "core/win32/pe.hpp"
+#include "core/win32/string.hpp"
 
 namespace diagnostics {
     namespace {
@@ -140,27 +143,8 @@ namespace diagnostics {
         return buf.first(static_cast<std::size_t>(out - buf.begin()));
     }
 
-    void module_file_name(HMODULE module, std::array<char, MAX_PATH> &out) {
-        // The wide name is never truncated by the ANSI code page's longer
-        // encoding; only the file name is converted, to UTF-8, into `out`.
-        std::array<wchar_t, MAX_PATH> path {};
-        const DWORD len = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
-        if (len == 0) {
-            out.front() = '\0';
-            return;
-        }
-        const std::wstring_view full(path.data(), len);
-        const auto              sep  = full.rfind(L'\\');
-        const auto              name = sep != std::wstring_view::npos ? full.substr(sep + 1) : full;
-        const int               written = WideCharToMultiByte(CP_UTF8,
-                                                              0,
-                                                              name.data(),
-                                                              static_cast<int>(name.size()),
-                                                              out.data(),
-                                                              static_cast<int>(out.size() - 1),
-                                                              nullptr,
-                                                              nullptr);
-        out.at(static_cast<std::size_t>(written > 0 ? written : 0)) = '\0';
+    auto module_file_name(HMODULE module) -> std::string {
+        return win32::path_to_utf8(win32::get_module_path(module).filename());
     }
 
     void resolve_modules(std::span<StackFrame> frames) {
@@ -175,7 +159,7 @@ namespace diagnostics {
             frame.module_base   = reinterpret_cast<std::uintptr_t>(hModule);
             frame.module_offset = frame.address - frame.module_base;
 
-            module_file_name(hModule, frame.module_name);
+            frame.module_name = module_file_name(hModule);
         }
     }
 

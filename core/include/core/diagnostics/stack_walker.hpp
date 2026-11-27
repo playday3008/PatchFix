@@ -5,6 +5,7 @@
 
 #include <array>
 #include <span>
+#include <string>
 
 #include <Windows.h>
 
@@ -16,7 +17,7 @@ namespace diagnostics {
         std::uintptr_t                  address {};
         std::uintptr_t                  module_base {};
         std::uintptr_t                  module_offset {};
-        std::array<char, MAX_PATH>      module_name {};
+        std::string                     module_name;
         std::array<char, k_max_sym_len> symbol_name {};
         std::uintptr_t                  symbol_offset {};
         bool                            has_symbol {};
@@ -25,8 +26,7 @@ namespace diagnostics {
     auto capture_stack(const CONTEXT *ctx, std::span<StackFrame> buf) -> std::span<StackFrame>;
     void resolve_modules(std::span<StackFrame> frames);
 
-    // Writes the file name of `module` into `out` as UTF-8, or an empty string
-    // on failure. Does not allocate, so it is safe in the crash path.
-    void module_file_name(HMODULE module, std::array<char, MAX_PATH> &out);
+    // The file name of `module` as UTF-8, or empty on failure.
+    auto module_file_name(HMODULE module) -> std::string;
     void resolve_symbols(std::span<StackFrame> frames);
 } // namespace diagnostics

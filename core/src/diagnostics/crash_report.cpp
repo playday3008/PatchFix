@@ -86,14 +86,14 @@ namespace diagnostics {
                     if (frame.has_symbol) {
                         log().critical("    #{:02d}  {}+0x{:X} ({} +0x{:X})",
                                        i,
-                                       frame.module_name.data(),
+                                       frame.module_name,
                                        frame.module_offset,
                                        frame.symbol_name.data(),
                                        frame.symbol_offset);
                     } else {
                         log().critical("    #{:02d}  {}+0x{:X}",
                                        i,
-                                       frame.module_name.data(),
+                                       frame.module_name,
                                        frame.module_offset);
                     }
                 } else {
@@ -248,23 +248,22 @@ namespace diagnostics {
 
         auto fault_addr = reinterpret_cast<std::uintptr_t>(rec->ExceptionAddress);
 
-        HMODULE                    hModule = nullptr;
-        std::array<char, MAX_PATH> module_path {};
-        bool has_module = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                                                 GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                             reinterpret_cast<LPCSTR>(fault_addr),
-                                             &hModule) != FALSE;
+        HMODULE hModule    = nullptr;
+        bool    has_module = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                                reinterpret_cast<LPCSTR>(fault_addr),
+                                                &hModule) != FALSE;
         if (has_module) {
-            auto base          = reinterpret_cast<std::uintptr_t>(hModule);
-            auto module_offset = fault_addr - base;
-            module_file_name(hModule, module_path);
-            if (module_path.front() == '\0') {
+            auto       base          = reinterpret_cast<std::uintptr_t>(hModule);
+            auto       module_offset = fault_addr - base;
+            const auto module_name   = module_file_name(hModule);
+            if (module_name.empty()) {
                 has_module = false;
             } else {
                 logger.critical("VEH: {} (0x{:08X}) at {}+0x{:X}",
                                 exception_code_name(code),
                                 code,
-                                module_path.data(),
+                                module_name,
                                 module_offset);
             }
         }
