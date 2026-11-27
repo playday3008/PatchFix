@@ -5,10 +5,13 @@
 
 #include <algorithm>
 #include <mutex>
-#include <string_view>
+#include <string>
 
 #include <Windows.h>
 #include <DbgHelp.h>
+
+#include "core/win32/pe.hpp"
+#include "core/win32/string.hpp"
 
 namespace diagnostics {
     namespace {
@@ -140,6 +143,10 @@ namespace diagnostics {
         return buf.first(static_cast<std::size_t>(out - buf.begin()));
     }
 
+    auto module_file_name(HMODULE module) -> std::string {
+        return win32::path_to_utf8(win32::get_module_path(module).filename());
+    }
+
     void resolve_modules(std::span<StackFrame> frames) {
         for (auto &frame : frames) {
             HMODULE hModule = nullptr;
@@ -152,19 +159,7 @@ namespace diagnostics {
             frame.module_base   = reinterpret_cast<std::uintptr_t>(hModule);
             frame.module_offset = frame.address - frame.module_base;
 
-            if (GetModuleFileNameA(hModule, frame.module_name.data(), frame.module_name.size()) ==
-                0) {
-                continue;
-            }
-
-            const std::string_view path(frame.module_name.data());
-            const auto             sep = path.rfind('\\');
-            if (sep != std::string_view::npos) {
-                auto                       filename = path.substr(sep + 1);
-                std::array<char, MAX_PATH> tmp {};
-                std::copy_n(filename.data(), filename.size() + 1, tmp.data());
-                frame.module_name = tmp;
-            }
+            frame.module_name = module_file_name(hModule);
         }
     }
 

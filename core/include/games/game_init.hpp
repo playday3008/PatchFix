@@ -24,6 +24,7 @@
 #include "core/vmp/debug_breakin.hpp"
 #include "core/vmp/integrity_bypass.hpp"
 #include "core/win32/pe.hpp"
+#include "core/win32/string.hpp"
 
 #include "games/entry.hpp"
 #include "games/game_data.hpp"
@@ -57,7 +58,7 @@ void init_game(Registry                    &registry,
     }
 
     auto journal_path = ini_path.parent_path() / (std::string(plugin::output_name) + ".journal");
-    diagnostics::crash_journal::open(journal_path.string());
+    diagnostics::crash_journal::open(journal_path);
 
     auto prev = diagnostics::crash_journal::read_previous();
     if (!prev.clean && !prev.hooks_active.empty()) {
@@ -75,12 +76,12 @@ void init_game(Registry                    &registry,
 
     diagnostics::crash_journal::write_session_start();
 
-    const mINI::INIFile file(ini_path.string());
+    const mINI::INIFile file(ini_path);
     mINI::INIStructure  ini;
     if (!file.read(ini)) {
         log::get()->warn("Failed to read INI, using defaults");
     }
-    log::get()->trace("INI loaded from {}", ini_path.string());
+    log::get()->trace("INI loaded from {}", win32::path_to_utf8(ini_path));
 
     Addrs addrs;
     bool  all_found = true;
@@ -114,28 +115,27 @@ void init_game(Registry                    &registry,
     }
 
     // Runs on the watcher thread, where an escaping exception would terminate the game.
-    watcher() =
-        std::make_unique<FileWatcher>(ini_path, [ini = ini_path.string(), &registry] -> auto {
-            try {
-                log::get()->info("INI change detected, reloading...");
-                const mINI::INIFile f(ini);
-                mINI::INIStructure  data;
-                if (f.read(data)) {
-                    registry.reload(data);
-                } else {
-                    log::get()->warn("Config reload failed: could not read INI");
-                }
-            } catch (const std::exception &e) {
-                log::get()->error("Config reload failed: {}", e.what());
+    watcher() = std::make_unique<FileWatcher>(ini_path, [ini = ini_path, &registry] -> auto {
+        try {
+            log::get()->info("INI change detected, reloading...");
+            const mINI::INIFile f(ini);
+            mINI::INIStructure  data;
+            if (f.read(data)) {
+                registry.reload(data);
+            } else {
+                log::get()->warn("Config reload failed: could not read INI");
             }
-        });
-    log::get()->info("File watcher started for {}", ini_path.string());
+        } catch (const std::exception &e) {
+            log::get()->error("Config reload failed: {}", e.what());
+        }
+    });
+    log::get()->info("File watcher started for {}", win32::path_to_utf8(ini_path));
 }
 
 template<games::ValidGameData G, typename Registry>
 void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &registry) {
     auto dll_dir  = win32::get_module_path(hModule).parent_path();
-    auto exe_name = win32::get_module_path(nullptr).filename().string();
+    auto exe_name = win32::path_to_utf8(win32::get_module_path(nullptr).filename());
 
     if (exe_name != games::game_data<G>::exe_name) {
         return;
@@ -143,7 +143,7 @@ void game_init_impl(HMODULE hModule, const std::stop_token &stop, Registry &regi
 
     auto log_name = std::string(plugin::output_name);
 
-    log::init((dll_dir / (log_name + ".log")).string());
+    log::init(dll_dir / (log_name + ".log"));
     diagnostics::init_log();
     log::get()->info("{} v{} initializing for {}", log_name, plugin::version::string, exe_name);
 

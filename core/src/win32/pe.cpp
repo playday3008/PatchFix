@@ -1,13 +1,11 @@
 #include "core/win32/pe.hpp"
 
-#include <array>
 #include <filesystem>
 #include <span>
+#include <string>
 #include <utility>
 
 #include <Windows.h>
-
-#include "core/win32/string.hpp"
 
 namespace win32 {
     auto enumerate_sections(HMODULE hModule) -> std::vector<SectionInfo> {
@@ -59,8 +57,24 @@ namespace win32 {
     }
 
     auto get_module_path(HMODULE hModule) -> std::filesystem::path {
-        std::array<WCHAR, MAX_PATH> buf {};
-        const DWORD                 len = GetModuleFileNameW(hModule, buf.data(), MAX_PATH);
-        return {wchar_to_utf8(buf.data(), static_cast<int>(len))};
+        // Paths can exceed MAX_PATH where long paths are enabled. A result that
+        // fills the buffer may be truncated, so grow until it does not.
+        constexpr DWORD k_max_len = 32768;
+        std::wstring    buf(MAX_PATH, L'\0');
+        while (true) {
+            const DWORD len =
+                GetModuleFileNameW(hModule, buf.data(), static_cast<DWORD>(buf.size()));
+            if (len == 0) {
+                return {};
+            }
+            if (len < buf.size()) {
+                buf.resize(len);
+                return {std::move(buf)};
+            }
+            if (buf.size() >= k_max_len) {
+                return {};
+            }
+            buf.resize(buf.size() * 2);
+        }
     }
 } // namespace win32

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -11,7 +12,7 @@ namespace diagnostics::crash_journal {
         std::string              timestamp;
     };
 
-    void open(std::string_view path);
+    void open(const std::filesystem::path &path);
     void write_session_start();
     void write_hook_installed(std::string_view hook_name);
     void write_init_complete();

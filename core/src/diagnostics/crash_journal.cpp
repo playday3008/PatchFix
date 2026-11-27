@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include <chrono>
+#include <filesystem>
 #include <format>
 #include <string>
 #include <string_view>
@@ -18,7 +19,7 @@ namespace diagnostics::crash_journal {
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
         win32::UniqueHandle<> g_file;
-        std::string           g_path;
+        std::filesystem::path g_path;
 #pragma clang diagnostic pop
 
         void write_line(std::string_view line) {
@@ -42,8 +43,8 @@ namespace diagnostics::crash_journal {
             return s;
         }
 
-        auto read_file_contents(std::string_view path) -> std::string {
-            const win32::UniqueHandle<> h(CreateFileA(std::string(path).c_str(),
+        auto read_file_contents(const std::filesystem::path &path) -> std::string {
+            const win32::UniqueHandle<> h(CreateFileW(path.c_str(),
                                                       GENERIC_READ,
                                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
                                                       nullptr,
@@ -93,9 +94,9 @@ namespace diagnostics::crash_journal {
         }
     } // namespace
 
-    void open(std::string_view path) {
-        g_path = std::string(path);
-        g_file = win32::UniqueHandle<>(CreateFileA(g_path.c_str(),
+    void open(const std::filesystem::path &path) {
+        g_path = path;
+        g_file = win32::UniqueHandle<>(CreateFileW(g_path.c_str(),
                                                    GENERIC_READ | GENERIC_WRITE,
                                                    FILE_SHARE_READ,
                                                    nullptr,

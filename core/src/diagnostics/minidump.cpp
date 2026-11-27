@@ -1,8 +1,8 @@
 #include "core/diagnostics/minidump.hpp"
 
-#include <array>
+#include <filesystem>
 #include <format>
-#include <string_view>
+#include <string>
 
 #include <Windows.h>
 #include <DbgHelp.h>
@@ -10,6 +10,8 @@
 #include <spdlog/spdlog.h>
 
 #include "core/diagnostics/crash_logger.hpp"
+#include "core/win32/pe.hpp"
+#include "core/win32/string.hpp"
 
 namespace diagnostics {
     namespace {
@@ -30,46 +32,33 @@ namespace diagnostics {
 #pragma clang diagnostic pop
         }
 
-        void build_dump_path(std::array<char, MAX_PATH> &out) {
-            std::array<char, MAX_PATH> module_path {};
-            HMODULE                    hSelf = nullptr;
-
-            const bool has_self =
-                GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+        // <plugin dir>\<plugin name>.<timestamp>.dmp, or patchfix_crash.<timestamp>.dmp
+        // in the working directory when the plugin's own path is unavailable.
+        auto build_dump_path() -> std::filesystem::path {
+            HMODULE               self = nullptr;
+            std::filesystem::path dir;
+            std::wstring          stem = L"patchfix_crash";
+            if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
                                        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                   reinterpret_cast<LPCSTR>(&build_dump_path),
-                                   &hSelf) != FALSE;
-
-            std::string_view dir;
-            std::string_view stem = "patchfix_crash";
-
-            if (has_self && GetModuleFileNameA(hSelf,
-                                               module_path.data(),
-                                               static_cast<DWORD>(module_path.size())) != FALSE) {
-                const std::string_view path(module_path.data());
-                const auto             sep = path.rfind('\\');
-                dir                 = (sep != std::string_view::npos) ? path.substr(0, sep + 1)
-                                                                      : std::string_view {};
-                const auto filename = (sep != std::string_view::npos) ? path.substr(sep + 1) : path;
-                const auto dot      = filename.rfind('.');
-                stem = (dot != std::string_view::npos) ? filename.substr(0, dot) : filename;
+                                   reinterpret_cast<LPCWSTR>(&build_dump_path),
+                                   &self) != FALSE) {
+                const auto path = win32::get_module_path(self);
+                if (!path.empty()) {
+                    dir  = path.parent_path();
+                    stem = path.stem().native();
+                }
             }
 
             SYSTEMTIME st {};
             GetLocalTime(&st);
-
-            auto result = std::format_to_n(out.data(),
-                                           out.size() - 1,
-                                           "{}{}.{:04}{:02}{:02}_{:02}{:02}{:02}.dmp",
-                                           dir,
-                                           stem,
-                                           st.wYear,
-                                           st.wMonth,
-                                           st.wDay,
-                                           st.wHour,
-                                           st.wMinute,
-                                           st.wSecond);
-            *result.out = '\0';
+            return dir / std::format(L"{}.{:04}{:02}{:02}_{:02}{:02}{:02}.dmp",
+                                     stem,
+                                     st.wYear,
+                                     st.wMonth,
+                                     st.wDay,
+                                     st.wHour,
+                                     st.wMinute,
+                                     st.wSecond);
         }
     } // namespace
 
@@ -80,10 +69,10 @@ namespace diagnostics {
             return;
         }
 
-        std::array<char, MAX_PATH> dump_path {};
-        build_dump_path(dump_path);
+        const auto        dump_path = build_dump_path();
+        const std::string dump_name = win32::path_to_utf8(dump_path);
 
-        HANDLE hFile = CreateFileA(dump_path.data(),
+        HANDLE hFile = CreateFileW(dump_path.c_str(),
                                    GENERIC_WRITE,
                                    0,
                                    nullptr,
@@ -91,7 +80,7 @@ namespace diagnostics {
                                    FILE_ATTRIBUTE_NORMAL,
                                    nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            log().warn("Minidump: failed to create {}", dump_path.data());
+            log().warn("Minidump: failed to create {}", dump_name);
             return;
         }
 
@@ -110,7 +99,7 @@ namespace diagnostics {
         CloseHandle(hFile);
 
         if (ok != FALSE) {
-            log().critical("Minidump written: {}", dump_path.data());
+            log().critical("Minidump written: {}", dump_name);
         } else {
             log().warn("Minidump: MiniDumpWriteDump failed (error {})", GetLastError());
         }

@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include <algorithm>
+#include <filesystem>
 #include <flat_map>
 #include <functional>
 #include <memory>
@@ -62,9 +63,9 @@ namespace {
 #pragma clang diagnostic pop
 } // namespace
 
-log::log(std::string_view path, std::size_t maxSize, std::size_t maxFiles)
+log::log(const std::filesystem::path &path, std::size_t maxSize, std::size_t maxFiles)
     : m(std::make_unique<Impl>()) {
-    const std::string p(path);
+    const spdlog::filename_t &p = path.native();
     try {
         m->sinks.push_back(
             std::make_shared<spdlog::sinks::rotating_file_sink_mt>(p, maxSize, maxFiles, true));
@@ -73,7 +74,7 @@ log::log(std::string_view path, std::size_t maxSize, std::size_t maxFiles)
         // hasn't released the file handle yet (no FILE_SHARE_DELETE).
         // Truncate via Win32 (succeeds because the old handle allows
         // FILE_SHARE_WRITE), then open without rotation.
-        HANDLE h = CreateFileA(p.c_str(),
+        HANDLE h = CreateFileW(p.c_str(),
                                GENERIC_WRITE,
                                FILE_SHARE_READ | FILE_SHARE_WRITE,
                                nullptr,
@@ -104,7 +105,7 @@ log::~log() {
     m->sinks.clear();
 }
 
-void log::init(std::string_view path, std::size_t maxSize, std::size_t maxFiles) {
+void log::init(const std::filesystem::path &path, std::size_t maxSize, std::size_t maxFiles) {
     if (g_instance) {
         return;
     }
