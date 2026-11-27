@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include <filesystem>
 #include <string_view>
@@ -53,7 +54,7 @@ namespace hooks {
 
         // The game's flag for looking up every language's bigfile under
         // Japanese\, or null when its pattern was not found.
-        const volatile std::uint8_t *g_japanese_dir = nullptr;
+        const std::uint8_t *g_japanese_dir = nullptr;
 
         // Options-menu control ids (sub_ABFD00 switch) and list heads in the menu object.
         constexpr std::uintptr_t k_voice_language_control = 0x1E;
@@ -173,9 +174,11 @@ namespace hooks {
             g_game_dir = win32::get_module_path(nullptr).parent_path();
             if (addrs.vo_japanese_dir_flag) {
                 // The pattern lands on the flag's absolute address in a cmp.
-                // NOLINTNEXTLINE(performance-no-int-to-ptr)
-                g_japanese_dir = *reinterpret_cast<const volatile std::uint8_t *const *>(
-                    addrs.vo_japanese_dir_flag.value());
+                std::uintptr_t flag = 0;
+                std::memcpy(&flag,
+                            reinterpret_cast<const void *>(addrs.vo_japanese_dir_flag.value()),
+                            sizeof(flag));
+                g_japanese_dir = reinterpret_cast<const std::uint8_t *>(flag);
             }
             auto list_addr   = addrs.vo_menu_list_check.value();
             auto list_result = mem::make_hook<HideStubLanguages>(list_addr);
