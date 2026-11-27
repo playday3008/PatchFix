@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <system_error>
+#include <utility>
 
 #include <Windows.h>
 
@@ -42,7 +43,9 @@ namespace {
               path(dir / L"copy.exe") {
             std::wstring self(MAX_PATH, L'\0');
             self.resize(GetModuleFileNameW(nullptr, self.data(), MAX_PATH));
-            std::filesystem::copy_file(self, path);
+            std::filesystem::copy_file(self,
+                                       path,
+                                       std::filesystem::copy_options::overwrite_existing);
             module = LoadLibraryExW(path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
         }
 
@@ -71,8 +74,9 @@ namespace {
 
 // The MSVC STL converts narrow paths through UTF-8 under a UTF-8 C runtime
 // locale and through the system ANSI code page under any other, so these two
-// locales cover both conversions. A narrow round trip fails for this directory
-// under every ANSI code page, since none holds both Cyrillic and Japanese.
+// locales cover both conversions. The directory mixes Cyrillic and Japanese,
+// which no single-byte or DBCS ANSI code page holds; a system set to the UTF-8
+// ANSI code page would not catch a narrow round trip.
 TEST_CASE("get_module_path keeps a non-ASCII directory under both narrow path conversions",
           "[win32][path]") {
     const char *locale = GENERATE("C", ".UTF8");
