@@ -3,11 +3,10 @@
 #include <array>
 #include <filesystem>
 #include <span>
+#include <string_view>
 #include <utility>
 
 #include <Windows.h>
-
-#include "core/win32/string.hpp"
 
 namespace win32 {
     auto enumerate_sections(HMODULE hModule) -> std::vector<SectionInfo> {
@@ -61,6 +60,6 @@ namespace win32 {
     auto get_module_path(HMODULE hModule) -> std::filesystem::path {
         std::array<WCHAR, MAX_PATH> buf {};
         const DWORD                 len = GetModuleFileNameW(hModule, buf.data(), MAX_PATH);
-        return {wchar_to_utf8(buf.data(), static_cast<int>(len))};
+        return {std::wstring_view(buf.data(), len)};
     }
 } // namespace win32

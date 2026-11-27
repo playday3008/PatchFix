@@ -8,6 +8,7 @@
 #include <span>
 #include <stop_token>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <version>
 #if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 202311L
@@ -38,9 +39,9 @@ void FileWatcher::stop() {
 }
 
 void FileWatcher::watch_loop(const std::stop_token &token) {
-    log::get()->trace("FileWatcher: opening directory {}", m_dir_path.string());
+    log::get()->trace("FileWatcher: opening directory {}", win32::path_to_utf8(m_dir_path));
     const win32::UniqueHandle<> dir_handle(
-        CreateFileA(m_dir_path.string().c_str(),
+        CreateFileW(m_dir_path.c_str(),
                     FILE_LIST_DIRECTORY,
                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                     nullptr,
@@ -132,11 +133,11 @@ auto FileWatcher::records_name_our_file(std::span<const std::byte> records) cons
         }
 
         try {
-            const auto name =
-                win32::wchar_to_utf8(static_cast<LPCWCH>(info->FileName),
-                                     static_cast<int>(info->FileNameLength / sizeof(WCHAR)));
+            const std::wstring_view name(static_cast<LPCWCH>(info->FileName),
+                                         info->FileNameLength / sizeof(WCHAR));
             if (std::filesystem::path(name) == m_file_name) {
-                log::get()->trace("FileWatcher: change detected for {}", name);
+                log::get()->trace("FileWatcher: change detected for {}",
+                                  win32::wchar_to_utf8(name.data(), static_cast<int>(name.size())));
                 return true;
             }
         } catch (const std::exception &e) {

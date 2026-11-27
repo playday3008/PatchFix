@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include <filesystem>
 #include <memory>
 #include <source_location>
 #include <string_view>
@@ -14,9 +15,9 @@ class log {
         static consteval auto extract_logger_name(const char *filepath) -> std::string_view;
     };
 
-    static void init(std::string_view path,
-                     std::size_t      maxSize  = 1ULL * 1024 * 1024,
-                     std::size_t      maxFiles = 3ULL);
+    static void init(const std::filesystem::path &path,
+                     std::size_t                  maxSize  = 1ULL * 1024 * 1024,
+                     std::size_t                  maxFiles = 3ULL);
 
     static void shutdown();
 
@@ -32,7 +33,7 @@ class log {
     ~log();
 
   private:
-    log(std::string_view path, std::size_t maxSize, std::size_t maxFiles);
+    log(const std::filesystem::path &path, std::size_t maxSize, std::size_t maxFiles);
 
     struct Impl;
     std::unique_ptr<Impl> m;

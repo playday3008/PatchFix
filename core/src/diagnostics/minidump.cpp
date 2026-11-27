@@ -2,6 +2,7 @@
 
 #include <array>
 #include <format>
+#include <string>
 #include <string_view>
 
 #include <Windows.h>
@@ -10,6 +11,7 @@
 #include <spdlog/spdlog.h>
 
 #include "core/diagnostics/crash_logger.hpp"
+#include "core/win32/string.hpp"
 
 namespace diagnostics {
     namespace {
@@ -30,9 +32,9 @@ namespace diagnostics {
 #pragma clang diagnostic pop
         }
 
-        void build_dump_path(std::array<char, MAX_PATH> &out) {
-            std::array<char, MAX_PATH> module_path {};
-            HMODULE                    hSelf = nullptr;
+        void build_dump_path(std::array<wchar_t, MAX_PATH> &out) {
+            std::array<wchar_t, MAX_PATH> module_path {};
+            HMODULE                       hSelf = nullptr;
 
             const bool has_self =
                 GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
@@ -40,19 +42,20 @@ namespace diagnostics {
                                    reinterpret_cast<LPCSTR>(&build_dump_path),
                                    &hSelf) != FALSE;
 
-            std::string_view dir;
-            std::string_view stem = "patchfix_crash";
+            std::wstring_view dir;
+            std::wstring_view stem = L"patchfix_crash";
 
-            if (has_self && GetModuleFileNameA(hSelf,
+            if (has_self && GetModuleFileNameW(hSelf,
                                                module_path.data(),
                                                static_cast<DWORD>(module_path.size())) != FALSE) {
-                const std::string_view path(module_path.data());
-                const auto             sep = path.rfind('\\');
-                dir                 = (sep != std::string_view::npos) ? path.substr(0, sep + 1)
-                                                                      : std::string_view {};
-                const auto filename = (sep != std::string_view::npos) ? path.substr(sep + 1) : path;
-                const auto dot      = filename.rfind('.');
-                stem = (dot != std::string_view::npos) ? filename.substr(0, dot) : filename;
+                const std::wstring_view path(module_path.data());
+                const auto              sep = path.rfind(L'\\');
+                dir                 = (sep != std::wstring_view::npos) ? path.substr(0, sep + 1)
+                                                                       : std::wstring_view {};
+                const auto filename = (sep != std::wstring_view::npos) ? path.substr(sep + 1)
+                                                                       : path;
+                const auto dot      = filename.rfind(L'.');
+                stem = (dot != std::wstring_view::npos) ? filename.substr(0, dot) : filename;
             }
 
             SYSTEMTIME st {};
@@ -60,7 +63,7 @@ namespace diagnostics {
 
             auto result = std::format_to_n(out.data(),
                                            out.size() - 1,
-                                           "{}{}.{:04}{:02}{:02}_{:02}{:02}{:02}.dmp",
+                                           L"{}{}.{:04}{:02}{:02}_{:02}{:02}{:02}.dmp",
                                            dir,
                                            stem,
                                            st.wYear,
@@ -69,7 +72,7 @@ namespace diagnostics {
                                            st.wHour,
                                            st.wMinute,
                                            st.wSecond);
-            *result.out = '\0';
+            *result.out = L'\0';
         }
     } // namespace
 
@@ -80,10 +83,11 @@ namespace diagnostics {
             return;
         }
 
-        std::array<char, MAX_PATH> dump_path {};
+        std::array<wchar_t, MAX_PATH> dump_path {};
         build_dump_path(dump_path);
+        const std::string dump_name = win32::wchar_to_utf8(dump_path.data(), -1);
 
-        HANDLE hFile = CreateFileA(dump_path.data(),
+        HANDLE hFile = CreateFileW(dump_path.data(),
                                    GENERIC_WRITE,
                                    0,
                                    nullptr,
@@ -91,7 +95,7 @@ namespace diagnostics {
                                    FILE_ATTRIBUTE_NORMAL,
                                    nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            log().warn("Minidump: failed to create {}", dump_path.data());
+            log().warn("Minidump: failed to create {}", dump_name.c_str());
             return;
         }
 
@@ -110,7 +114,7 @@ namespace diagnostics {
         CloseHandle(hFile);
 
         if (ok != FALSE) {
-            log().critical("Minidump written: {}", dump_path.data());
+            log().critical("Minidump written: {}", dump_name.c_str());
         } else {
             log().warn("Minidump: MiniDumpWriteDump failed (error {})", GetLastError());
         }
