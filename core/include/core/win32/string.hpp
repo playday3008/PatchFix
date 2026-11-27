@@ -18,8 +18,6 @@ namespace win32 {
         return result;
     }
 
-    // For logging: path::string() converts through the C runtime code page and
-    // throws for a character that page lacks.
     inline auto path_to_utf8(const std::filesystem::path &path) -> std::string {
         const auto &wide = path.native();
         return wchar_to_utf8(wide.c_str(), static_cast<int>(wide.size()));

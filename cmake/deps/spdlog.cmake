@@ -3,7 +3,6 @@ include(FetchContent)
 
 set(SPDLOG_SYSTEM_INCLUDES ON  CACHE BOOL "" FORCE)
 set(SPDLOG_USE_STD_FORMAT  ON  CACHE BOOL "" FORCE)
-# Log paths go to CreateFileW as UTF-16, so any install directory works.
 set(SPDLOG_WCHAR_FILENAMES ON  CACHE BOOL "" FORCE)
 
 FetchContent_Declare(spdlog
