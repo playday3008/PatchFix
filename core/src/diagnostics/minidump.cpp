@@ -1,5 +1,7 @@
 #include "core/diagnostics/minidump.hpp"
 
+#include <cwchar>
+
 #include <array>
 #include <format>
 #include <string>
@@ -85,7 +87,8 @@ namespace diagnostics {
 
         std::array<wchar_t, MAX_PATH> dump_path {};
         build_dump_path(dump_path);
-        const std::string dump_name = win32::wchar_to_utf8(dump_path.data(), -1);
+        const std::string dump_name =
+            win32::wchar_to_utf8(dump_path.data(), static_cast<int>(std::wcslen(dump_path.data())));
 
         HANDLE hFile = CreateFileW(dump_path.data(),
                                    GENERIC_WRITE,
@@ -95,7 +98,7 @@ namespace diagnostics {
                                    FILE_ATTRIBUTE_NORMAL,
                                    nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            log().warn("Minidump: failed to create {}", dump_name.c_str());
+            log().warn("Minidump: failed to create {}", dump_name);
             return;
         }
 
@@ -114,7 +117,7 @@ namespace diagnostics {
         CloseHandle(hFile);
 
         if (ok != FALSE) {
-            log().critical("Minidump written: {}", dump_name.c_str());
+            log().critical("Minidump written: {}", dump_name);
         } else {
             log().warn("Minidump: MiniDumpWriteDump failed (error {})", GetLastError());
         }

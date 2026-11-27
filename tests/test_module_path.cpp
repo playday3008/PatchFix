@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <system_error>
 
 #include <Windows.h>
 
@@ -11,20 +12,37 @@
 #include "core/win32/pe.hpp"
 
 namespace {
+    // Removes the directory when destroyed, including after a failed setup.
+    struct DirGuard {
+        std::filesystem::path dir;
+
+        explicit DirGuard(std::filesystem::path d) : dir(std::move(d)) {
+            std::filesystem::create_directories(dir);
+        }
+        DirGuard(const DirGuard &)                     = delete;
+        DirGuard(DirGuard &&)                          = delete;
+        auto operator=(const DirGuard &) -> DirGuard & = delete;
+        auto operator=(DirGuard &&) -> DirGuard &      = delete;
+        ~DirGuard() {
+            std::error_code ignored;
+            std::filesystem::remove_all(dir, ignored);
+        }
+    };
+
     // Copies this test executable into `dir` and maps it as a module, so
     // GetModuleFileNameW reports a path inside `dir`. The copy's imports are
     // not resolved and its entry point does not run.
     struct ModuleCopy {
+        DirGuard              guard;
         std::filesystem::path path;
         HMODULE               module = nullptr;
 
-        explicit ModuleCopy(const std::filesystem::path &dir) : path(dir / L"copy.exe") {
-            std::filesystem::create_directories(dir);
+        explicit ModuleCopy(const std::filesystem::path &dir)
+            : guard(dir),
+              path(dir / L"copy.exe") {
             std::wstring self(MAX_PATH, L'\0');
             self.resize(GetModuleFileNameW(nullptr, self.data(), MAX_PATH));
-            std::filesystem::copy_file(self,
-                                       path,
-                                       std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::copy_file(self, path);
             module = LoadLibraryExW(path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
         }
 
@@ -37,8 +55,6 @@ namespace {
             if (module != nullptr) {
                 FreeLibrary(module);
             }
-            std::error_code ignored;
-            std::filesystem::remove_all(path.parent_path(), ignored);
         }
     };
 
@@ -53,19 +69,21 @@ namespace {
     };
 } // namespace
 
-TEST_CASE("get_module_path keeps a non-ASCII directory under any C runtime code page",
+// The MSVC STL converts narrow paths through UTF-8 under a UTF-8 C runtime
+// locale and through the system ANSI code page under any other, so these two
+// locales cover both conversions. A narrow round trip fails for this directory
+// under every ANSI code page, since none holds both Cyrillic and Japanese.
+TEST_CASE("get_module_path keeps a non-ASCII directory under both narrow path conversions",
           "[win32][path]") {
-    const char *locale = GENERATE("C", ".1252", ".1251", ".932", ".UTF8");
-    // Cyrillic and Japanese: no single-byte code page holds both.
-    const auto dir = std::filesystem::temp_directory_path() / L"PatchFix Тест テスト";
+    const char *locale = GENERATE("C", ".UTF8");
+    const auto  dir    = std::filesystem::temp_directory_path() /
+                         (L"PatchFix Тест テスト " + std::to_wstring(GetCurrentProcessId()));
 
     const ModuleCopy copy(dir);
     REQUIRE(copy.module != nullptr);
 
     const LocaleGuard guard;
-    if (std::setlocale(LC_ALL, locale) == nullptr) {
-        SKIP("locale " << locale << " is not available");
-    }
+    REQUIRE(std::setlocale(LC_ALL, locale) != nullptr);
 
     const auto path = win32::get_module_path(copy.module);
     CHECK(path.native() == copy.path.native());
